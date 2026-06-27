@@ -1,0 +1,40 @@
+<div class="map-picker">
+  <!-- Map -->
+  <div class="map-container" #mapEl></div>
+
+  <!-- Controls -->
+  <div class="map-controls">
+    <button type="button" class="ctrl-btn ctrl-btn--primary" (click)="detectCurrentLocation()" [disabled]="detecting">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+        <path d="M12 1v4M12 19v4M1 12h4M19 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      {{ detecting ? 'Detecting…' : 'Auto-detect Location' }}
+    </button>
+
+    <div class="coord-inputs">
+      <div class="coord-field">
+        <label>Latitude</label>
+        <input type="number" [(ngModel)]="manualLat" placeholder="e.g. 30.0444" step="0.000001"/>
+      </div>
+      <div class="coord-field">
+        <label>Longitude</label>
+        <input type="number" [(ngModel)]="manualLng" placeholder="e.g. 31.2357" step="0.000001"/>
+      </div>
+      <button type="button" class="ctrl-btn ctrl-btn--outline" (click)="applyManualCoords()">
+        Apply
+      </button>
+    </div>
+
+    @if (detectError) {
+      <p class="map-error">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        {{ detectError }}
+      </p>
+    }
+
+    <p class="map-hint">Click on the map or drag the marker to set the branch location.</p>
+  </div>
+</div>

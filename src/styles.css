@@ -1,0 +1,85 @@
+@import "tailwindcss";
+@import "primeicons/primeicons.css";
+
+/* ── Brand design tokens ── */
+:root {
+  --color-brand-primary:        #14b8a5;
+  --color-brand-hover:          #0f766e;
+  --color-brand-deep:           #09524a;
+  --color-brand-surface:        #f0fdfa;
+  --color-brand-surface-strong: #ccfbf1;
+
+  --color-bg-page:              #f8fafc;
+  --color-bg-card:              #ffffff;
+  --color-bg-surface-secondary: #f1f5f9;
+  --color-border:               #e2e8f0;
+  --color-border-subtle:        #f1f5f9;
+
+  --color-text-primary:         #1e293b;
+  --color-text-secondary:       #64748b;
+  --color-text-muted:           #94a3b8;
+
+  --color-warning-text:  #b45309;
+  --color-warning-bg:    #fef3c7;
+  --color-success-text:  #0f766e;
+  --color-success-bg:    #ccfbf1;
+  --color-danger-text:   #be123c;
+  --color-danger-bg:     #ffe4e6;
+
+  --sidebar-width: 240px;
+}
+
+[data-theme="dark"] {
+  --color-brand-primary:        #2dd4bf;
+  --color-brand-hover:          #14b8a5;
+  --color-brand-deep:           #0f766e;
+  --color-brand-surface:        rgba(20,184,165,0.08);
+  --color-brand-surface-strong: rgba(20,184,165,0.15);
+
+  --color-bg-page:              #0f172a;
+  --color-bg-card:              #1e293b;
+  --color-bg-surface-secondary: #334155;
+  --color-border:               #334155;
+  --color-border-subtle:        #1e293b;
+
+  --color-text-primary:         #e2e8f0;
+  --color-text-secondary:       #94a3b8;
+  --color-text-muted:           #64748b;
+
+  --color-warning-text: #fbbf24;
+  --color-warning-bg:   rgba(245,158,11,0.15);
+  --color-success-text: #5eead4;
+  --color-success-bg:   rgba(20,184,165,0.15);
+  --color-danger-text:  #fb7185;
+  --color-danger-bg:    rgba(239,68,68,0.15);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--color-bg-page);
+  color: var(--color-text-primary);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--color-bg-surface-secondary); }
+::-webkit-scrollbar-thumb { background: var(--color-brand-primary); border-radius: 4px; }
+
+.leaflet-container { width: 100%; height: 100%; border-radius: 12px; }
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.badge-pending { color: var(--color-warning-text); background: var(--color-warning-bg); }
+.badge-success { color: var(--color-success-text); background: var(--color-success-bg); }
+.badge-danger  { color: var(--color-danger-text);  background: var(--color-danger-bg); }

@@ -1,0 +1,180 @@
+<div class="step-card step-card--wide">
+  <!-- Header -->
+  <div class="step-header">
+    <span class="step-badge">Step 2 of 5</span>
+    <h1 class="step-title">Branch Information</h1>
+    <p class="step-subtitle">Add one or more pharmacy branches with their location details.</p>
+  </div>
+
+  <!-- Body -->
+  <div class="step-body">
+    @if (error()) {
+      <div class="alert alert--error">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        {{ error() }}
+      </div>
+    }
+
+    <form [formGroup]="form" novalidate>
+      <div formArrayName="branches" class="branches-list">
+        @for (branch of branches.controls; track $index) {
+          <div class="branch-card" [class.branch-card--main]="mainIndex() === $index">
+            <!-- Branch Header -->
+            <div class="branch-card__header">
+              <div class="branch-title">
+                <h3>Branch {{ $index + 1 }}</h3>
+                @if (mainIndex() === $index) {
+                  <span class="main-badge">Main</span>
+                }
+              </div>
+              <div class="branch-actions">
+                <label class="radio-toggle">
+                  <input
+                    type="radio"
+                    name="mainBranch"
+                    [checked]="mainIndex() === $index"
+                    (change)="setMain($index)"
+                  />
+                  <span>Set as main</span>
+                </label>
+                @if (branches.length > 1) {
+                  <button type="button" class="btn btn--danger btn--sm" (click)="removeBranch($index)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Remove
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- Branch Fields -->
+            <div [formGroupName]="$index" class="branch-fields">
+              <div class="form-grid">
+                <!-- Branch Name -->
+                <div class="field" [class.field--invalid]="isInvalid(branchAt($index), 'branchName')">
+                  <label class="field__label">Branch Name <span class="required">*</span></label>
+                  <input type="text" class="field__input" formControlName="branchName"
+                    placeholder="e.g. Main Branch – Downtown" maxlength="120"/>
+                  @if (hasError(branchAt($index), 'branchName', 'required')) {
+                    <span class="field__error">Branch name is required.</span>
+                  }
+                </div>
+
+                <!-- City -->
+                <div class="field" [class.field--invalid]="isInvalid(branchAt($index), 'city')">
+                  <label class="field__label">City <span class="required">*</span></label>
+                  <select class="field__select" formControlName="city">
+                    <option value="">Select a city</option>
+                    <option value="Cairo">Cairo</option>
+                    <option value="Alexandria">Alexandria</option>
+                    <option value="Giza">Giza</option>
+                    <option value="Shubra El Kheima">Shubra El Kheima</option>
+                    <option value="Port Said">Port Said</option>
+                    <option value="Suez">Suez</option>
+                    <option value="Mansoura">Mansoura</option>
+                    <option value="El Mahalla El Kubra">El Mahalla El Kubra</option>
+                    <option value="Tanta">Tanta</option>
+                    <option value="Asyut">Asyut</option>
+                    <option value="Ismailia">Ismailia</option>
+                    <option value="Faiyum">Faiyum</option>
+                    <option value="Zagazig">Zagazig</option>
+                    <option value="Damietta">Damietta</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  @if (hasError(branchAt($index), 'city', 'required')) {
+                    <span class="field__error">City is required.</span>
+                  }
+                </div>
+
+                <!-- Phone -->
+                <div class="field" [class.field--invalid]="isInvalid(branchAt($index), 'phone')">
+                  <label class="field__label">Branch Phone <span class="required">*</span></label>
+                  <input type="tel" class="field__input" formControlName="phone"
+                    placeholder="01012345678" inputmode="numeric" maxlength="11"/>
+                  @if (hasError(branchAt($index), 'phone', 'required')) {
+                    <span class="field__error">Phone is required.</span>
+                  }
+                  @if (hasError(branchAt($index), 'phone', 'pattern')) {
+                    <span class="field__error">Enter a valid Egyptian mobile number.</span>
+                  }
+                </div>
+
+                <!-- Address -->
+                <div class="field field--full" [class.field--invalid]="isInvalid(branchAt($index), 'addressText')">
+                  <label class="field__label">Full Address <span class="required">*</span></label>
+                  <textarea class="field__textarea" formControlName="addressText"
+                    placeholder="Street name, building number, district…" rows="2" maxlength="250"></textarea>
+                  @if (hasError(branchAt($index), 'addressText', 'required')) {
+                    <span class="field__error">Address is required.</span>
+                  }
+                </div>
+              </div>
+
+              <!-- Map -->
+              <div class="map-section">
+                <div class="map-section__label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z" fill="currentColor"/>
+                  </svg>
+                  Pin Location on Map
+                  @if (isInvalid(branchAt($index), 'latitude') || isInvalid(branchAt($index), 'longitude')) {
+                    <span class="map-required-error"> — Location is required</span>
+                  }
+                </div>
+
+                <app-branch-map-picker
+                  [lat]="latAt($index)"
+                  [lng]="lngAt($index)"
+                  (locationChange)="onLocationChange($index, $event)"
+                />
+
+                @if (latAt($index) !== null) {
+                  <div class="coords-display">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
+                    </svg>
+                    Location saved: {{ latAt($index)?.toFixed(6) }}, {{ lngAt($index)?.toFixed(6) }}
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Add Branch -->
+      <button type="button" class="add-branch-btn" (click)="addBranch()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        Add Another Branch
+      </button>
+    </form>
+  </div>
+
+  <!-- Footer -->
+  <div class="step-footer">
+    <button type="button" class="btn btn--ghost" (click)="goBack()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Back
+    </button>
+    <button type="button" class="btn btn--primary" (click)="submit()" [disabled]="loading()">
+      @if (loading()) {
+        <svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        Saving…
+      } @else {
+        Next
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      }
+    </button>
+  </div>
+</div>

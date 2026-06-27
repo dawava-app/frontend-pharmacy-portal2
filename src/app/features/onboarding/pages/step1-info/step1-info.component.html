@@ -1,0 +1,124 @@
+<div class="step-card">
+  <!-- Header -->
+  <div class="step-header">
+    <span class="step-badge">Step 1 of 5</span>
+    <h1 class="step-title">Organization Setup</h1>
+    <p class="step-subtitle">Provide the foundational details for your pharmacy facility.</p>
+  </div>
+
+  <!-- Body -->
+  <div class="step-body">
+    @if (error()) {
+      <div class="alert alert--error">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        {{ error() }}
+      </div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="form-grid">
+      <!-- Pharmacy Name -->
+      <div class="field" [class.field--invalid]="isInvalid('pharmacyName')">
+        <label class="field__label" for="pharmacyName">
+          Pharmacy Name <span class="required">*</span>
+        </label>
+        <input
+          id="pharmacyName"
+          type="text"
+          class="field__input"
+          formControlName="pharmacyName"
+          placeholder="e.g. Central Health Pharmaceuticals"
+          maxlength="120"
+        />
+        @if (hasError('pharmacyName', 'required')) {
+          <span class="field__error">Pharmacy name is required.</span>
+        }
+        @if (hasError('pharmacyName', 'maxlength')) {
+          <span class="field__error">Cannot exceed 120 characters.</span>
+        }
+      </div>
+
+      <!-- Clinical License Number -->
+      <div class="field" [class.field--invalid]="isInvalid('clinicalLicenseNumber')">
+        <label class="field__label" for="clinicalLicenseNumber">
+          Clinical License Number <span class="required">*</span>
+        </label>
+        <input
+          id="clinicalLicenseNumber"
+          type="text"
+          class="field__input"
+          formControlName="clinicalLicenseNumber"
+          placeholder="e.g. LIC-2024-00123"
+          maxlength="60"
+        />
+        @if (hasError('clinicalLicenseNumber', 'required')) {
+          <span class="field__error">Clinical license number is required.</span>
+        }
+      </div>
+
+      <!-- Primary Contact Name -->
+      <div class="field" [class.field--invalid]="isInvalid('primaryContactName')">
+        <label class="field__label" for="primaryContactName">
+          Primary Contact Name <span class="required">*</span>
+        </label>
+        <input
+          id="primaryContactName"
+          type="text"
+          class="field__input"
+          formControlName="primaryContactName"
+          placeholder="e.g. Ahmed Hassan"
+          maxlength="120"
+        />
+        @if (hasError('primaryContactName', 'required')) {
+          <span class="field__error">Contact name is required.</span>
+        }
+      </div>
+
+      <!-- Primary Contact Phone -->
+      <div class="field" [class.field--invalid]="isInvalid('primaryContactPhone')">
+        <label class="field__label" for="primaryContactPhone">
+          Primary Contact Phone <span class="required">*</span>
+        </label>
+        <input
+          id="primaryContactPhone"
+          type="tel"
+          class="field__input"
+          formControlName="primaryContactPhone"
+          placeholder="01012345678"
+          inputmode="numeric"
+          maxlength="11"
+        />
+        @if (hasError('primaryContactPhone', 'required')) {
+          <span class="field__error">Phone number is required.</span>
+        }
+        @if (hasError('primaryContactPhone', 'pattern')) {
+          <span class="field__error">Enter a valid Egyptian mobile number (010, 011, 012, 015).</span>
+        }
+      </div>
+    </form>
+  </div>
+
+  <!-- Footer -->
+  <div class="step-footer">
+    <div></div>
+    <button
+      type="button"
+      class="btn btn--primary"
+      (click)="submit()"
+      [disabled]="loading()"
+    >
+      @if (loading()) {
+        <svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        Saving…
+      } @else {
+        Next
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      }
+    </button>
+  </div>
+</div>

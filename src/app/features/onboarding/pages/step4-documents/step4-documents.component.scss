@@ -1,0 +1,224 @@
+@use '../shared-step';
+
+.doc-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Slots */
+.upload-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.slot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  &__label {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin: 0;
+  }
+}
+
+/* Dropzone */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px 20px;
+  border: 2px dashed var(--color-border);
+  border-radius: 14px;
+  background: var(--color-bg-surface-secondary);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: var(--color-brand-primary);
+    background: var(--color-brand-surface);
+  }
+
+  &--drag {
+    border-color: var(--color-brand-primary);
+    background: var(--color-brand-surface);
+    box-shadow: 0 0 0 4px var(--color-brand-surface);
+  }
+
+  &--filled {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.05);
+    border-style: solid;
+  }
+}
+
+.dz-icon {
+  color: #10b981;
+  display: flex;
+
+  &--upload {
+    color: var(--color-text-muted);
+    transition: color 0.2s;
+
+    .dropzone:hover & { color: var(--color-brand-primary); }
+  }
+}
+
+.dz-filename {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #10b981;
+  word-break: break-all;
+}
+
+.dz-size {
+  font-size: 0.75rem;
+  color: #059669;
+}
+
+.dz-text {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.dz-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* Error */
+.doc-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+/* Uploaded list sidebar */
+.uploaded-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &__heading {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-brand-primary);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.empty-hint {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.uploaded-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-card);
+
+  &__icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: var(--color-brand-surface);
+    color: var(--color-brand-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    word-break: break-all;
+  }
+
+  &__meta {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+  }
+}
+
+.remove-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+
+  &:hover {
+    background: var(--color-danger-bg);
+    color: var(--color-danger-text);
+  }
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--color-brand-surface);
+  color: var(--color-brand-primary);
+  border-radius: 10px;
+  font-size: 0.82rem;
+  margin-top: 20px;
+}
+
+@media (max-width: 640px) {
+  .doc-layout {
+    grid-template-columns: 1fr;
+  }
+}

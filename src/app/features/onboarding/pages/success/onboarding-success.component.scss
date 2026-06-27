@@ -1,0 +1,112 @@
+.success-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  min-height: 60vh;
+}
+
+.success-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 48px 40px;
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+}
+
+.check-circle {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 28px;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+}
+
+.success-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  margin: 0 0 12px;
+}
+
+.success-message {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+  margin: 0 0 28px;
+}
+
+.info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+  padding: 18px 20px;
+  background: var(--color-bg-surface-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 32px;
+
+  svg { color: var(--color-brand-primary); flex-shrink: 0; margin-top: 2px; }
+
+  strong { color: var(--color-text-primary); }
+}
+
+.next-steps {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--color-text-secondary);
+}
+
+.success-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+
+  &--ghost {
+    background: none;
+    border: 1.5px solid var(--color-border);
+    color: var(--color-text-secondary);
+
+    &:hover {
+      border-color: var(--color-brand-primary);
+      color: var(--color-brand-primary);
+    }
+  }
+}
+
+@media (max-width: 540px) {
+  .success-card {
+    padding: 32px 20px;
+  }
+  .success-title {
+    font-size: 1.4rem;
+  }
+}

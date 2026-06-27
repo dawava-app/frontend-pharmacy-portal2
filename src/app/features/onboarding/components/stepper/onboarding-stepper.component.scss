@@ -1,0 +1,115 @@
+.stepper {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0 16px;
+  margin-bottom: 40px;
+  max-width: 680px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.stepper__track {
+  position: absolute;
+  top: 18px;
+  left: calc(16px + 36px / 2);
+  right: calc(16px + 36px / 2);
+  height: 2px;
+  background: var(--color-border);
+  z-index: 0;
+}
+
+.stepper__progress {
+  height: 100%;
+  background: var(--color-brand-primary);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.stepper__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.step__dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  border: 2px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-muted);
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.step__number {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.step__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: center;
+  letter-spacing: 0.01em;
+  transition: color 0.2s;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+/* States */
+.step--completed {
+  .step__dot {
+    background: var(--color-brand-primary);
+    border-color: var(--color-brand-primary);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(20, 184, 165, 0.35);
+  }
+  .step__label { color: var(--color-brand-primary); }
+}
+
+.step--active {
+  .step__dot {
+    background: var(--color-bg-card);
+    border-color: var(--color-brand-primary);
+    border-width: 3px;
+    color: var(--color-brand-primary);
+    box-shadow: 0 0 0 4px var(--color-brand-surface);
+  }
+  .step__label {
+    color: var(--color-brand-primary);
+    font-weight: 700;
+  }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .step__label { display: none; }
+  .stepper { padding: 0 8px; margin-bottom: 24px; }
+  .step__dot { width: 30px; height: 30px; font-size: 11px; }
+
+  .stepper__track {
+    top: 15px;
+    left: calc(8px + 30px / 2);
+    right: calc(8px + 30px / 2);
+  }
+}

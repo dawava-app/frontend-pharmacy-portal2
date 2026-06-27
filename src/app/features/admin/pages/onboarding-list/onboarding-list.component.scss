@@ -1,0 +1,215 @@
+.page {
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Header */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  &__title-group { flex: 1; }
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  margin: 0 0 4px;
+}
+
+.page-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.total-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: var(--color-brand-surface);
+  color: var(--color-brand-primary);
+  padding: 4px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.search-wrap {
+  flex: 1;
+  min-width: 220px;
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-brand-primary);
+  }
+}
+
+.filter-select {
+  padding: 10px 14px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  min-width: 160px;
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-brand-primary);
+  }
+}
+
+/* Alert */
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+
+  &--error {
+    background: var(--color-danger-bg);
+    color: var(--color-danger-text);
+  }
+}
+
+/* Table */
+.table-wrap {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.loader-row,
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 60px 24px;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  flex-direction: column;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  thead tr {
+    background: var(--color-bg-surface-secondary);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+}
+
+.data-row {
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.15s;
+
+  &:last-child { border-bottom: none; }
+  &:hover { background: var(--color-bg-surface-secondary); }
+
+  td {
+    padding: 14px 16px;
+    color: var(--color-text-secondary);
+    vertical-align: middle;
+  }
+}
+
+.cell--mono  { font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--color-text-muted); }
+.cell--name  { font-weight: 600; color: var(--color-text-primary); max-width: 200px; }
+.cell--center { text-align: center; }
+.cell--date  { white-space: nowrap; font-size: 0.82rem; }
+.cell--action {
+  text-align: right;
+  color: var(--color-text-muted);
+  width: 40px;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  &--draft       { background: rgba(107,114,128,0.12); color: #6b7280; }
+  &--submitted   { background: rgba(59,130,246,0.12);  color: #3b82f6; }
+  &--underreview { background: rgba(245,158,11,0.12);  color: #f59e0b; }
+  &--approved    { background: rgba(16,185,129,0.12);  color: #10b981; }
+  &--rejected    { background: rgba(239,68,68,0.12);   color: #ef4444; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spin { animation: spin 0.8s linear infinite; }
+
+@media (max-width: 768px) {
+  .page { padding: 16px; }
+
+  .data-table th:nth-child(4),
+  .data-table td:nth-child(4),
+  .data-table th:nth-child(5),
+  .data-table td:nth-child(5),
+  .data-table th:nth-child(7),
+  .data-table td:nth-child(7) {
+    display: none;
+  }
+}

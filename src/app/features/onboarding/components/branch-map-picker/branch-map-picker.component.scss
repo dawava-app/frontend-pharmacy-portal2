@@ -1,0 +1,124 @@
+.map-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.map-container {
+  height: 240px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-surface-secondary);
+  z-index: 0;
+}
+
+.map-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  white-space: nowrap;
+
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  &--primary {
+    background: var(--color-brand-primary);
+    color: #fff;
+    align-self: flex-start;
+
+    &:hover:not(:disabled) {
+      background: var(--color-brand-hover);
+    }
+  }
+
+  &--outline {
+    background: var(--color-bg-card);
+    color: var(--color-brand-primary);
+    border-color: var(--color-brand-primary);
+    align-self: flex-end;
+
+    &:hover:not(:disabled) {
+      background: var(--color-brand-surface);
+    }
+  }
+}
+
+.coord-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.coord-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  input {
+    padding: 8px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: var(--color-text-primary);
+    background: var(--color-bg-card);
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s, box-shadow 0.15s;
+
+    &:focus {
+      border-color: var(--color-brand-primary);
+      box-shadow: 0 0 0 3px var(--color-brand-surface);
+    }
+
+    &::placeholder { color: var(--color-text-muted); }
+  }
+}
+
+.map-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.map-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin: 0;
+  font-style: italic;
+}
+
+@media (max-width: 480px) {
+  .coord-inputs {
+    grid-template-columns: 1fr 1fr;
+
+    .ctrl-btn { grid-column: 1 / -1; justify-self: stretch; text-align: center; }
+  }
+}

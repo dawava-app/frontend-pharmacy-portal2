@@ -1,0 +1,217 @@
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-badge">Step 5 of 5</span>
+    <h1 class="step-title">Review & Submit</h1>
+    <p class="step-subtitle">Double-check your information before submitting your application.</p>
+  </div>
+
+  <div class="step-body">
+    <!-- Loading -->
+    @if (loading()) {
+      <div class="loader-wrap">
+        <svg class="spin" width="32" height="32" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        <span>Loading your application…</span>
+      </div>
+    }
+
+    @if (error()) {
+      <div class="alert alert--error">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        {{ error() }}
+      </div>
+    }
+
+    @if (!loading() && review(); as r) {
+      <!-- Organization Info -->
+      <section class="review-section">
+        <div class="review-section__head">
+          <h3 class="review-section__title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Organization Info
+          </h3>
+          <a routerLink="/onboarding/step1" class="edit-link">Edit</a>
+        </div>
+        <div class="review-grid">
+          <div class="review-item">
+            <span class="review-item__label">Pharmacy Name</span>
+            <span class="review-item__value">{{ r.pharmacyName || '—' }}</span>
+          </div>
+          <div class="review-item">
+            <span class="review-item__label">License Number</span>
+            <span class="review-item__value">{{ r.clinicalLicenseNumber || '—' }}</span>
+          </div>
+          <div class="review-item">
+            <span class="review-item__label">Contact Name</span>
+            <span class="review-item__value">{{ r.primaryContactName || '—' }}</span>
+          </div>
+          <div class="review-item">
+            <span class="review-item__label">Contact Phone</span>
+            <span class="review-item__value">{{ r.primaryContactPhone || '—' }}</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Branches -->
+      <section class="review-section">
+        <div class="review-section__head">
+          <h3 class="review-section__title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            Branches ({{ r.branches?.length || 0 }})
+          </h3>
+          <a routerLink="/onboarding/step2" class="edit-link">Edit</a>
+        </div>
+        @if (!r.branches?.length) {
+          <p class="no-data">No branches added.</p>
+        }
+        @for (branch of r.branches; track $index) {
+          <div class="branch-card">
+            <div class="branch-card__name">{{ branch.branchName || 'Branch ' + ($index + 1) }}</div>
+            <div class="review-grid review-grid--3">
+              <div class="review-item">
+                <span class="review-item__label">City</span>
+                <span class="review-item__value">{{ branch.city || '—' }}</span>
+              </div>
+              <div class="review-item">
+                <span class="review-item__label">Phone</span>
+                <span class="review-item__value">{{ branch.phone || '—' }}</span>
+              </div>
+              <div class="review-item">
+                <span class="review-item__label">Coordinates</span>
+                <span class="review-item__value">
+                  @if (branch.latitude && branch.longitude) {
+                    {{ branch.latitude | number:'1.4-4' }}, {{ branch.longitude | number:'1.4-4' }}
+                  } @else {
+                    —
+                  }
+                </span>
+              </div>
+              <div class="review-item review-item--full">
+                <span class="review-item__label">Address</span>
+                <span class="review-item__value">{{ branch.addressText || '—' }}</span>
+              </div>
+            </div>
+          </div>
+        }
+      </section>
+
+      <!-- Owner Info -->
+      <section class="review-section">
+        <div class="review-section__head">
+          <h3 class="review-section__title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            Owner Information
+          </h3>
+          <a routerLink="/onboarding/step3" class="edit-link">Edit</a>
+        </div>
+        <div class="review-grid">
+          <div class="review-item">
+            <span class="review-item__label">Full Name</span>
+            <span class="review-item__value">{{ r.ownerFullName || '—' }}</span>
+          </div>
+          <div class="review-item">
+            <span class="review-item__label">Phone</span>
+            <span class="review-item__value">{{ r.ownerPhoneNumber || '—' }}</span>
+          </div>
+          <div class="review-item">
+            <span class="review-item__label">Email</span>
+            <span class="review-item__value">{{ r.ownerEmailAddress || '—' }}</span>
+          </div>
+          <div class="review-item">
+            <span class="review-item__label">Entity Type</span>
+            <span class="review-item__value">{{ r.entityType || '—' }}</span>
+          </div>
+          <div class="review-item review-item--full">
+            <span class="review-item__label">Tax ID</span>
+            <span class="review-item__value">{{ r.taxId || '—' }}</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Documents -->
+      <section class="review-section">
+        <div class="review-section__head">
+          <h3 class="review-section__title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8L14 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Documents
+          </h3>
+          <a routerLink="/onboarding/step4" class="edit-link">Edit</a>
+        </div>
+        @if (localDocs.length === 0) {
+          <div class="alert alert--warning">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            No documents uploaded. Please go back and upload required documents.
+          </div>
+        } @else {
+          <div class="doc-list">
+            @for (doc of localDocs; track doc.fileId) {
+              <div class="doc-row">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8L14 2zm4 18H6V4h7v5h5v11z" fill="currentColor"/>
+                </svg>
+                <span class="doc-row__name">{{ doc.fileName }}</span>
+                <span class="doc-row__type">{{ doc.documentType }}</span>
+                <svg class="doc-ok" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
+                </svg>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- Declaration -->
+      <div class="alert alert--info declaration">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex-shrink:0">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        By submitting this application you confirm that all the provided information is accurate and complete, and you agree to the Dawava Terms of Service and Privacy Policy.
+      </div>
+    }
+  </div>
+
+  <!-- Footer -->
+  <div class="step-footer">
+    <button type="button" class="btn btn--ghost" (click)="goBack()" [disabled]="submitting()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Back
+    </button>
+    <button
+      type="button"
+      class="btn btn--primary btn--submit"
+      (click)="submit()"
+      [disabled]="submitting() || loading()"
+    >
+      @if (submitting()) {
+        <svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        Submitting…
+      } @else {
+        Submit Application
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      }
+    </button>
+  </div>
+</div>

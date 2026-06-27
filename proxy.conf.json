@@ -1,0 +1,31 @@
+{
+  "/api": {
+    "target": "https://api.dawava.me",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api": "/gateway/api"
+    }
+  },
+  "/core": {
+    "target": "https://api.dawava.me",
+    "secure": true,
+    "changeOrigin": true
+  },
+  "/file": {
+    "target": "https://api.dawava.me",
+    "secure": true,
+    "changeOrigin": true
+  },
+  "/chat": {
+    "target": "https://api.dawava.me",
+    "secure": true,
+    "changeOrigin": true
+  },
+  "/ws": {
+    "target": "https://api.dawava.me",
+    "secure": true,
+    "changeOrigin": true,
+    "ws": true
+  }
+}

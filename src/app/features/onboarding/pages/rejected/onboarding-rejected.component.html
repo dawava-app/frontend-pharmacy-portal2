@@ -1,0 +1,78 @@
+<div class="status-wrap">
+  <div class="status-card">
+
+    @if (loading()) {
+      <div class="loading">
+        <svg class="spin" width="28" height="28" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    } @else {
+
+      <div class="x-circle">
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none">
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <h1 class="status-title">Application Not Approved</h1>
+
+      @if (appNumber()) {
+        <p class="app-ref">Reference &nbsp;<strong>{{ appNumber() }}</strong></p>
+      }
+
+      <p class="status-message">
+        We're sorry — your pharmacy registration was not approved at this time.
+        Please review the reason below, make the required corrections, and submit a new application.
+      </p>
+
+      @if (rejectionReason()) {
+        <div class="reason-box">
+          <div class="reason-header">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2.2"/>
+              <path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+            Reason from reviewer
+          </div>
+          <p class="reason-text">{{ rejectionReason() }}</p>
+        </div>
+      } @else {
+        <div class="info-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span>No written reason was provided. Please check your registered email for further details.</span>
+        </div>
+      }
+
+      <div class="steps-box">
+        <p class="steps-label">What you can do next</p>
+        <div class="step-row">
+          <span class="step-num">1</span>
+          <span>Review the reason above and identify what needs to be corrected.</span>
+        </div>
+        <div class="step-row">
+          <span class="step-num">2</span>
+          <span>Start a new application with updated pharmacy details and documents.</span>
+        </div>
+        <div class="step-row">
+          <span class="step-num">3</span>
+          <span>Our team will review the new submission within 3–5 business days.</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn--primary" (click)="startNewApplication()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+          Apply Again
+        </button>
+        <a routerLink="/login" class="btn btn--ghost">Back to Login</a>
+      </div>
+
+    }
+  </div>
+</div>

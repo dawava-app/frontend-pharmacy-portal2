@@ -1,0 +1,48 @@
+@if (hasMultipleBranches() || availableScopes().length === 1) {
+  <div class="branch-switcher" [class.is-open]="isOpen()">
+
+    <button
+      class="branch-btn"
+      (click)="toggle()"
+      [disabled]="switching() || !hasMultipleBranches()"
+      [class.single]="!hasMultipleBranches()"
+    >
+      <i class="pi pi-building branch-icon"></i>
+
+      @if (switching()) {
+        <span class="switch-spinner"></span>
+        <span class="branch-label">Switching…</span>
+      } @else {
+        <span class="branch-label">{{ currentBranchLabel() }}</span>
+        @if (hasMultipleBranches()) {
+          <i class="pi pi-chevron-down chevron"></i>
+        }
+      }
+    </button>
+
+    @if (isOpen()) {
+      <!-- backdrop to close dropdown on outside click -->
+      <div class="dropdown-backdrop" (click)="close()"></div>
+
+      <div class="branch-dropdown" role="listbox">
+        <p class="dropdown-header">Switch Branch</p>
+        @for (scope of availableScopes(); track scope.branch_id; let i = $index) {
+          <button
+            class="branch-option"
+            role="option"
+            [class.active]="scope.branch_id === currentBranchId()"
+            (click)="switchTo(scope.branch_id)"
+          >
+            <div class="option-icon">
+              <i class="pi pi-building"></i>
+            </div>
+            <span class="option-label">{{ labelFor(scope, i) }}</span>
+            @if (scope.branch_id === currentBranchId()) {
+              <i class="pi pi-check check-icon"></i>
+            }
+          </button>
+        }
+      </div>
+    }
+  </div>
+}

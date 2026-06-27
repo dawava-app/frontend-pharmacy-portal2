@@ -1,0 +1,104 @@
+<div class="page">
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="page-header__title-group">
+      <h1 class="page-title">Onboarding Applications</h1>
+      <p class="page-subtitle">Manage and review pharmacy registration requests.</p>
+    </div>
+    <div class="page-header__meta">
+      <span class="total-badge">{{ filtered().length }} application{{ filtered().length !== 1 ? 's' : '' }}</span>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+        <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <input
+        class="search-input"
+        type="text"
+        placeholder="Search by name, app number, or contact…"
+        [value]="search()"
+        (input)="onSearch($any($event.target).value)"
+      />
+    </div>
+
+    <select class="filter-select" [value]="filterStatus()" (change)="onFilter($any($event.target).value)">
+      <option value="">All Statuses</option>
+      <option value="Draft">Draft</option>
+      <option value="Submitted">Submitted</option>
+      <option value="UnderReview">Under Review</option>
+      <option value="Approved">Approved</option>
+      <option value="Rejected">Rejected</option>
+    </select>
+  </div>
+
+  <!-- Error -->
+  @if (error()) {
+    <div class="alert alert--error">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      {{ error() }}
+    </div>
+  }
+
+  <!-- Table -->
+  <div class="table-wrap">
+    @if (loading()) {
+      <div class="loader-row">
+        <svg class="spin" width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        Loading applications…
+      </div>
+    } @else if (filtered().length === 0) {
+      <div class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+          <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>No applications found.</span>
+      </div>
+    } @else {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>App #</th>
+            <th>Pharmacy</th>
+            <th>Status</th>
+            <th>Submitted</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (app of filtered(); track trackById($index, app)) {
+            <tr class="data-row" (click)="openDetail(app)">
+              <td class="cell--mono">{{ app.applicationNumber || '—' }}</td>
+              <td class="cell--name">{{ app.pharmacyName || '—' }}</td>
+              <td>
+                <span class="status-badge status-badge--{{ app.status.toLowerCase() }}">
+                  {{ statusLabel(app.status) }}
+                </span>
+              </td>
+              <td class="cell--date">
+                @if (app.submittedAt) {
+                  {{ app.submittedAt | date:'dd MMM yyyy' }}
+                } @else {
+                  —
+                }
+              </td>
+              <td class="cell--action">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>

@@ -1,0 +1,477 @@
+<div class="chat-wrap">
+
+  <!-- ══════════════════════════════════════════════════════════
+       LEFT — Conversation list
+  ══════════════════════════════════════════════════════════ -->
+  <aside class="chat-sidebar" [class.slide-out]="selectedConversation()">
+
+    <div class="sidebar-head">
+      <h2 class="sidebar-title">
+        <i class="pi pi-comments"></i>
+        Messages
+      </h2>
+      <div class="search-box">
+        <i class="pi pi-search"></i>
+        <input
+          type="text"
+          placeholder="Search conversations…"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+        />
+      </div>
+    </div>
+
+    <div class="conv-list">
+
+      @if (loading()) {
+        @for (n of skeletons; track n) {
+          <div class="skeleton-row">
+            <div class="sk-avatar"></div>
+            <div class="sk-body">
+              <div class="sk-line long"></div>
+              <div class="sk-line short"></div>
+            </div>
+          </div>
+        }
+      } @else if (filteredConversations().length === 0) {
+        <div class="empty-list">
+          <i class="pi pi-inbox"></i>
+          <p>{{ searchQuery() ? 'No results found' : 'No conversations yet' }}</p>
+        </div>
+      } @else {
+        @for (conv of filteredConversations(); track conv._id) {
+          <!-- Conversation item with context-menu wrapper -->
+          <div class="conv-item-wrap" [class.active]="selectedConversation()?._id === conv._id">
+
+            <button
+              class="conv-item"
+              [class.active]="selectedConversation()?._id === conv._id"
+              (click)="selectConversation(conv)"
+            >
+              <div class="conv-avatar">
+                <span class="avatar-text">{{ getConvInitials(conv) }}</span>
+                <span class="presence-dot" [class]="'presence-' + getPresenceStatus(conv)"></span>
+              </div>
+              <div class="conv-body">
+                <div class="conv-top-row">
+                  <span class="conv-name">{{ getConvName(conv) }}</span>
+                  <span class="conv-time">{{ formatTime(conv.lastMessage?.createdAt) }}</span>
+                </div>
+                <div class="conv-bottom-row">
+                  <span class="conv-preview">
+                    @if (conv.lastMessage?.deletedAt) {
+                      <em>Message deleted</em>
+                    } @else {
+                      {{ conv.lastMessage?.content || 'No messages yet' }}
+                    }
+                  </span>
+                  @if ((conv.unreadCount ?? 0) > 0) {
+                    <span class="unread-badge">{{ conv.unreadCount }}</span>
+                  }
+                </div>
+              </div>
+            </button>
+
+            <!-- Context menu trigger -->
+            <button
+              class="conv-menu-trigger"
+              (click)="openConvMenu(conv, $event)"
+              title="Conversation options"
+            >
+              <i class="pi pi-ellipsis-v"></i>
+            </button>
+
+            <!-- Context menu dropdown -->
+            @if (convMenuOpen() === conv._id) {
+              <div class="conv-context-menu" (click)="$event.stopPropagation()">
+                <button class="ctx-menu-item" (click)="markConversationAsRead(conv)">
+                  <i class="pi pi-check-square"></i> Mark as read
+                </button>
+                <button class="ctx-menu-item" (click)="markConversationUnread(conv)">
+                  <i class="pi pi-circle"></i> Mark as unread
+                </button>
+              </div>
+            }
+
+          </div>
+        }
+      }
+
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════════════════════════════════
+       RIGHT — Message thread
+  ══════════════════════════════════════════════════════════ -->
+  <section class="chat-main">
+
+    @if (!selectedConversation()) {
+      <!-- Empty state -->
+      <div class="empty-thread">
+        <div class="empty-thread-inner">
+          <div class="empty-icon">
+            <i class="pi pi-comments"></i>
+          </div>
+          <h3>Start a conversation</h3>
+          <p>Select a conversation from the left to view messages and chat with clients.</p>
+        </div>
+      </div>
+
+    } @else {
+
+      <!-- Thread header -->
+      <header class="thread-head">
+        <button class="back-btn" (click)="selectedConversation.set(null)" title="Back">
+          <i class="pi pi-arrow-left"></i>
+        </button>
+
+        <div class="thread-avatar">
+          <span class="avatar-text sm">{{ getConvInitials(selectedConversation()!) }}</span>
+          <span class="presence-dot sm" [class]="'presence-' + getPresenceStatus(selectedConversation()!)"></span>
+        </div>
+
+        <div class="thread-info">
+          <span class="thread-name">{{ getConvName(selectedConversation()!) }}</span>
+          <span class="thread-status" [class]="'status-' + getPresenceStatus(selectedConversation()!)">
+            @if (getPresenceStatus(selectedConversation()!) === 'online') {
+              <span class="online-dot"></span> Online
+            } @else {
+              <span class="offline-dot"></span> Offline
+            }
+          </span>
+        </div>
+      </header>
+
+      <!-- Messages area -->
+      <div class="messages-area" #messagesArea (scroll)="onScroll($event)">
+
+        @if (messagesLoading() && messages().length === 0) {
+          <div class="messages-spinner">
+            <i class="pi pi-spin pi-spinner"></i>
+          </div>
+        }
+
+        @if (canLoadMore() && !messagesLoading()) {
+          <div class="load-more-wrap">
+            <button class="load-more-btn" (click)="loadMoreMessages()">
+              <i class="pi pi-arrow-up"></i> Load older messages
+            </button>
+          </div>
+        }
+
+        @if (messagesLoading() && messages().length > 0) {
+          <div class="loading-older">
+            <i class="pi pi-spin pi-spinner"></i> Loading…
+          </div>
+        }
+
+        @for (msg of messages(); track msg._id; let i = $index) {
+
+          @if (shouldShowDateSeparator(msg, i)) {
+            <div class="date-sep">
+              <span>{{ getDateLabel(msg.createdAt) }}</span>
+            </div>
+          }
+
+          <div class="msg-wrap" [class.own]="isOwnMessage(msg)">
+
+            @if (!isOwnMessage(msg)) {
+              <div class="msg-avatar-sm">
+                <span class="avatar-text xs">{{ getConvInitials(selectedConversation()!) }}</span>
+              </div>
+            }
+
+            <div class="msg-bubble-group">
+
+              <!-- Sender name for received messages -->
+              @if (!isOwnMessage(msg) && !msg.deletedAt && getSenderName(msg.senderId)) {
+                <span class="msg-sender">{{ getSenderName(msg.senderId) }}</span>
+              }
+
+              <!-- Bubble row: bubble + emoji action side by side -->
+              <div class="bubble-row" [class.own]="isOwnMessage(msg)">
+
+                <!-- Message action popup (Edit / Delete / React) -->
+                @if (selectedMsgForAction() === msg._id) {
+                  <div
+                    class="msg-action-menu"
+                    [class.own]="isOwnMessage(msg)"
+                    (click)="$event.stopPropagation()"
+                  >
+                    @if (!msg.deletedAt) {
+                      <button class="action-item" (click)="startReply(msg)">
+                        <i class="pi pi-reply"></i> Reply
+                      </button>
+                    }
+                    @if (isOwnMessage(msg) && !msg.deletedAt) {
+                      <button class="action-item" (click)="startEdit(msg)">
+                        <i class="pi pi-pencil"></i> Edit
+                      </button>
+                      <button class="action-item danger" (click)="doDeleteMessage(msg)">
+                        <i class="pi pi-trash"></i> Delete
+                      </button>
+                    }
+                    @if (!msg.deletedAt) {
+                      <button class="action-item" (click)="openEmojiFromAction(msg, $event)">
+                        <i class="pi pi-face-smile"></i> React
+                      </button>
+                    }
+                  </div>
+                }
+
+                <!-- Emoji picker (from action menu or direct hover button) -->
+                @if (emojiPickerForMsg() === msg._id) {
+                  <div
+                    class="emoji-picker"
+                    [class.own]="isOwnMessage(msg)"
+                    (click)="$event.stopPropagation()"
+                  >
+                    @for (emoji of COMMON_EMOJIS; track emoji) {
+                      <button
+                        type="button"
+                        class="emoji-btn"
+                        (click)="selectEmoji(msg, emoji, $event)"
+                      >{{ emoji }}</button>
+                    }
+                  </div>
+                }
+
+                <!-- Inline edit mode -->
+                @if (editingMsgId() === msg._id) {
+                  <div class="inline-edit-wrap" (click)="$event.stopPropagation()">
+                    <input
+                      #editInput
+                      type="text"
+                      class="inline-edit-input"
+                      [(ngModel)]="editText"
+                      (keydown.enter)="confirmEdit()"
+                      (keydown.escape)="cancelEdit()"
+                    />
+                    <button class="edit-confirm-btn" (click)="confirmEdit()" title="Save">
+                      <i class="pi pi-check"></i>
+                    </button>
+                    <button class="edit-cancel-btn" (click)="cancelEdit()" title="Cancel">
+                      <i class="pi pi-times"></i>
+                    </button>
+                  </div>
+                } @else {
+                  <div
+                    class="msg-bubble"
+                    [class.own]="isOwnMessage(msg)"
+                    [class.deleted]="!!msg.deletedAt"
+                    [class.optimistic]="msg._optimistic"
+                    (click)="onMessageClick(msg, $event)"
+                  >
+                    <!-- File attachments -->
+                    @if (msg.attachments && msg.attachments.length > 0 && !msg.deletedAt) {
+                      <div class="attachments">
+                        @for (att of msg.attachments; track att.externalFileId) {
+                          <button
+                            type="button"
+                            class="attachment-chip"
+                            [class.att-own]="isOwnMessage(msg)"
+                            (click)="openAttachment(att.externalFileId); $event.stopPropagation()"
+                            title="Open file"
+                          >
+                            <i class="pi pi-paperclip"></i>
+                            <span class="att-label">{{ att.label || 'Attachment' }}</span>
+                            <i class="pi pi-external-link att-icon-right"></i>
+                          </button>
+                        }
+                      </div>
+                    }
+
+                    <!-- Reply preview (WhatsApp-style: show original message above) -->
+                    @if (msg.replyTo && !msg.deletedAt) {
+                      @let repliedMsg = getReplyMessage(msg.replyTo);
+                      <div class="reply-preview">
+                        <div class="reply-preview-bar"></div>
+                        <div class="reply-preview-body">
+                          <span class="reply-preview-sender">{{ getReplyPreviewSender(repliedMsg) }}</span>
+                          <span class="reply-preview-text">
+                            @if (repliedMsg?.deletedAt) {
+                              <em>Message deleted</em>
+                            } @else if (repliedMsg?.content) {
+                              {{ repliedMsg!.content }}
+                            } @else if (repliedMsg?.attachments?.length) {
+                              📎 Attachment
+                            } @else {
+                              Original message
+                            }
+                          </span>
+                        </div>
+                      </div>
+                    }
+
+                    <!-- Content -->
+                    @if (msg.deletedAt) {
+                      <span class="deleted-msg">
+                        <i class="pi pi-ban"></i> This message was deleted
+                      </span>
+                    } @else {
+                      @if (msg.content) {
+                        <p class="msg-text">{{ msg.content }}</p>
+                      }
+                    }
+
+                    <div class="msg-footer">
+                      <span class="msg-time">{{ formatMessageTime(msg.createdAt) }}</span>
+                      @if (msg.isEdited && !msg.deletedAt) {
+                        <span class="edited-tag">edited</span>
+                      }
+                      <!-- WhatsApp-style ticks for own messages -->
+                      @if (isOwnMessage(msg) && !msg.deletedAt) {
+                        <span class="read-ticks" [class.seen]="isMessageRead(msg)">
+                          <i class="pi pi-check tick"></i>
+                          @if (!msg._optimistic) {
+                            <i class="pi pi-check tick tick-second"></i>
+                          }
+                        </span>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <!-- Emoji reaction trigger on hover -->
+                @if (!msg.deletedAt && editingMsgId() !== msg._id) {
+                  <div class="msg-emoji-action">
+                    <button
+                      type="button"
+                      class="emoji-trigger-btn"
+                      (click)="toggleEmojiPicker(msg._id, $event)"
+                      title="Add reaction"
+                    >
+                      😊
+                    </button>
+                  </div>
+                }
+
+              </div>
+
+              <!-- Manager attribution -->
+              @if (isOwnMessage(msg) && getAttribution(msg)) {
+                <div class="attribution-tag">{{ getAttribution(msg) }}</div>
+              }
+
+              <!-- Reactions row -->
+              @if (msg.reactions && msg.reactions.length > 0) {
+                <div class="reactions-row" [class.own]="isOwnMessage(msg)">
+                  @for (r of msg.reactions; track r.emoji) {
+                    <button class="reaction-chip" (click)="toggleReaction(msg, r.emoji)">
+                      {{ r.emoji }}<span>{{ r.userIds.length }}</span>
+                    </button>
+                  }
+                </div>
+              }
+
+            </div>
+
+          </div>
+        }
+
+        @if (messages().length === 0 && !messagesLoading()) {
+          <div class="no-messages">
+            <i class="pi pi-comments"></i>
+            <p>No messages yet — start the conversation!</p>
+          </div>
+        }
+
+        @if (typingUserIds().length > 0) {
+          <div class="typing-indicator">
+            <div class="typing-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <span class="typing-label">Typing…</span>
+          </div>
+        }
+
+      </div>
+
+      <!-- Input footer -->
+      <footer class="chat-footer">
+
+        <!-- Reply bar -->
+        @if (replyToMessage()) {
+          <div class="reply-bar">
+            <div class="reply-bar-content">
+              <i class="pi pi-reply"></i>
+              <div class="reply-bar-text">
+                <span class="reply-bar-label">Replying to {{ getReplyPreviewSender(replyToMessage()!) }}</span>
+                <span class="reply-bar-preview">
+                  {{ replyToMessage()!.content || '📎 Attachment' }}
+                </span>
+              </div>
+            </div>
+            <button class="reply-close" (click)="replyToMessage.set(null)">
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        }
+
+        <!-- Pending attachment preview -->
+        @if (pendingAttachment()) {
+          <div class="attachment-preview">
+            <i class="pi pi-file"></i>
+            <span class="att-prev-label">{{ pendingAttachment()!.label }}</span>
+            <button type="button" class="att-prev-close" (click)="clearAttachment()" title="Remove attachment">
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        }
+
+        <div class="input-row">
+
+          <!-- File attach button -->
+          <button
+            type="button"
+            class="attach-btn"
+            (click)="triggerFileInput()"
+            [disabled]="uploadingFile() || sending()"
+            title="Attach file"
+          >
+            @if (uploadingFile()) {
+              <i class="pi pi-spin pi-spinner"></i>
+            } @else {
+              <i class="pi pi-paperclip"></i>
+            }
+          </button>
+
+          <!-- Hidden file input -->
+          <input
+            #fileInput
+            type="file"
+            style="display:none"
+            (change)="handleFileSelect($event)"
+          />
+
+          <input
+            type="text"
+            class="msg-input"
+            placeholder="Type a message…"
+            [(ngModel)]="messageText"
+            (input)="onTyping()"
+            (keydown.enter)="sendMessage()"
+            (blur)="stopTypingIfIdle()"
+            [disabled]="sending()"
+            autocomplete="off"
+          />
+          <button
+            class="send-btn"
+            [disabled]="(!messageText.trim() && !pendingAttachment()) || sending()"
+            (click)="sendMessage()"
+            title="Send"
+          >
+            @if (sending()) {
+              <i class="pi pi-spin pi-spinner"></i>
+            } @else {
+              <i class="pi pi-send"></i>
+            }
+          </button>
+        </div>
+
+      </footer>
+    }
+
+  </section>
+
+</div>

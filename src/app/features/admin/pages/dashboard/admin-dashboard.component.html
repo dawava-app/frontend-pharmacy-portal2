@@ -1,0 +1,107 @@
+<!-- Header -->
+<div class="page-header">
+  <div>
+    <div class="breadcrumb">
+      <span>Enterprise</span>
+      <i class="pi pi-chevron-right"></i>
+      <span class="active">Admin Dashboard</span>
+    </div>
+    <h1 class="page-title">Welcome back, {{ fullName() }}</h1>
+    <p class="page-sub">System-wide overview across all pharmacy branches</p>
+  </div>
+  <div class="header-actions">
+    <button class="btn-outline"><i class="pi pi-download"></i> Export Report</button>
+    <button class="btn-brand"><i class="pi pi-plus"></i> Add Branch</button>
+  </div>
+</div>
+
+<!-- System stats -->
+<div class="stats-grid">
+  @for (stat of systemStats; track stat.label) {
+    <div class="stat-card">
+      <div class="stat-icon" [class]="stat.color">
+        <i [class]="'pi ' + stat.icon.replace('pi ','')"></i>
+      </div>
+      <div class="stat-body">
+        <p class="stat-label">{{ stat.label }}</p>
+        <h2 class="stat-value">{{ stat.value }}</h2>
+        <div class="stat-change">
+          <i class="pi pi-arrow-up"></i>
+          {{ stat.change }}
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- Middle: branches + activity + map -->
+<div class="mid-grid">
+  <!-- Branches table -->
+  <div class="section-card col-span-2">
+    <div class="section-head">
+      <h4>Pharmacy Branches</h4>
+      <button class="btn-ghost-sm"><i class="pi pi-eye"></i> View All</button>
+    </div>
+    <table class="branch-table">
+      <thead>
+        <tr>
+          <th>BRANCH</th>
+          <th>STATUS</th>
+          <th>STAFF</th>
+          <th>MONTHLY REVENUE</th>
+          <th>ACTIONS</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (b of branches; track b.name) {
+          <tr>
+            <td class="branch-name">
+              <div class="branch-dot" [class.active-dot]="b.status === 'Active'"></div>
+              {{ b.name }}
+            </td>
+            <td>
+              <span class="status-badge"
+                [class.badge-success]="b.status === 'Active'"
+                [class.badge-danger]="b.status === 'Inactive'">
+                {{ b.status }}
+              </span>
+            </td>
+            <td>{{ b.staff }}</td>
+            <td>{{ b.revenue }}</td>
+            <td>
+              <button class="btn-icon"><i class="pi pi-pencil"></i></button>
+              <button class="btn-icon"><i class="pi pi-eye"></i></button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Recent activity -->
+  <div class="section-card">
+    <div class="section-head"><h4>Recent Activity</h4></div>
+    <div class="activity-list">
+      @for (item of recentActivity; track item.action) {
+        <div class="activity-item">
+          <div class="activity-dot" [class]="item.type"></div>
+          <div class="activity-body">
+            <p class="activity-action">{{ item.action }}</p>
+            <p class="activity-time">{{ item.time }}</p>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<!-- HQ Map -->
+<div class="section-card">
+  <div class="section-head">
+    <h4>Headquarters Location</h4>
+    <p class="map-label-sub">{{ hqLabel }}</p>
+  </div>
+  <div class="map-wrap">
+    <app-map [lat]="hqLat" [lng]="hqLng" [label]="hqLabel" [zoom]="13"/>
+  </div>
+</div>
