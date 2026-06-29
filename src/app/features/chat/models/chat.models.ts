@@ -11,6 +11,16 @@ export interface Attachment {
 export interface Reaction {
   emoji: string;
   userIds: string[];
+  count?: number;
+  hasReacted?: boolean;
+}
+
+export interface SenderProfile {
+  id: string;
+  username: string;
+  fullName: string;
+  email: string;
+  isActive: boolean;
 }
 
 export interface ReadReceipt {
@@ -31,6 +41,7 @@ export interface ChatMessage {
   metadata?: Record<string, unknown>;
   createdAt: string;
   updatedAt?: string;
+  isDeleted?: boolean;
   deletedAt?: string | null;
   _optimistic?: boolean;
 }

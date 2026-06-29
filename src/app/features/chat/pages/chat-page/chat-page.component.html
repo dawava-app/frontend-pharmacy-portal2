@@ -134,9 +134,9 @@
           <span class="thread-name">{{ getConvName(selectedConversation()!) }}</span>
           <span class="thread-status" [class]="'status-' + getPresenceStatus(selectedConversation()!)">
             @if (getPresenceStatus(selectedConversation()!) === 'online') {
-              <span class="online-dot"></span> Online
+              Online
             } @else {
-              <span class="offline-dot"></span> Offline
+              Offline
             }
           </span>
         </div>
@@ -165,7 +165,7 @@
           </div>
         }
 
-        @for (msg of messages(); track msg._id; let i = $index) {
+        @for (msg of visibleMessages(); track msg._id; let i = $index) {
 
           @if (shouldShowDateSeparator(msg, i)) {
             <div class="date-sep">
@@ -184,34 +184,43 @@
             <div class="msg-bubble-group">
 
               <!-- Sender name for received messages -->
-              @if (!isOwnMessage(msg) && !msg.deletedAt && getSenderName(msg.senderId)) {
+              @if (!isOwnMessage(msg) && !isDeletedMsg(msg) && getSenderName(msg.senderId)) {
                 <span class="msg-sender">{{ getSenderName(msg.senderId) }}</span>
               }
 
               <!-- Bubble row: bubble + emoji action side by side -->
               <div class="bubble-row" [class.own]="isOwnMessage(msg)">
 
-                <!-- Message action popup (Edit / Delete / React) -->
+                <!-- Message action popup (Edit / Delete for me / Delete for everyone / React) -->
                 @if (selectedMsgForAction() === msg._id) {
                   <div
                     class="msg-action-menu"
                     [class.own]="isOwnMessage(msg)"
                     (click)="$event.stopPropagation()"
                   >
-                    @if (!msg.deletedAt) {
+                    @if (!isDeletedMsg(msg)) {
                       <button class="action-item" (click)="startReply(msg)">
                         <i class="pi pi-reply"></i> Reply
                       </button>
                     }
-                    @if (isOwnMessage(msg) && !msg.deletedAt) {
+                    @if (isOwnMessage(msg) && !isDeletedMsg(msg)) {
                       <button class="action-item" (click)="startEdit(msg)">
                         <i class="pi pi-pencil"></i> Edit
                       </button>
-                      <button class="action-item danger" (click)="doDeleteMessage(msg)">
-                        <i class="pi pi-trash"></i> Delete
+                    }
+                    <!-- Delete for me: available on any message -->
+                    @if (!isDeletedMsg(msg)) {
+                      <button class="action-item" (click)="deleteForMe(msg)">
+                        <i class="pi pi-eye-slash"></i> Delete for me
                       </button>
                     }
-                    @if (!msg.deletedAt) {
+                    <!-- Delete for everyone: only on own messages -->
+                    @if (isOwnMessage(msg) && !isDeletedMsg(msg)) {
+                      <button class="action-item danger" (click)="deleteForEveryone(msg)">
+                        <i class="pi pi-trash"></i> Delete for everyone
+                      </button>
+                    }
+                    @if (!isDeletedMsg(msg)) {
                       <button class="action-item" (click)="openEmojiFromAction(msg, $event)">
                         <i class="pi pi-face-smile"></i> React
                       </button>
@@ -230,6 +239,7 @@
                       <button
                         type="button"
                         class="emoji-btn"
+                        [class.active]="isMyReaction(msg, emoji)"
                         (click)="selectEmoji(msg, emoji, $event)"
                       >{{ emoji }}</button>
                     }
@@ -258,12 +268,12 @@
                   <div
                     class="msg-bubble"
                     [class.own]="isOwnMessage(msg)"
-                    [class.deleted]="!!msg.deletedAt"
+                    [class.deleted]="isDeletedMsg(msg)"
                     [class.optimistic]="msg._optimistic"
                     (click)="onMessageClick(msg, $event)"
                   >
                     <!-- File attachments -->
-                    @if (msg.attachments && msg.attachments.length > 0 && !msg.deletedAt) {
+                    @if (msg.attachments && msg.attachments.length > 0 && !isDeletedMsg(msg)) {
                       <div class="attachments">
                         @for (att of msg.attachments; track att.externalFileId) {
                           <button
@@ -281,15 +291,15 @@
                       </div>
                     }
 
-                    <!-- Reply preview (WhatsApp-style: show original message above) -->
-                    @if (msg.replyTo && !msg.deletedAt) {
+                    <!-- Reply preview -->
+                    @if (msg.replyTo && !isDeletedMsg(msg)) {
                       @let repliedMsg = getReplyMessage(msg.replyTo);
                       <div class="reply-preview">
                         <div class="reply-preview-bar"></div>
                         <div class="reply-preview-body">
                           <span class="reply-preview-sender">{{ getReplyPreviewSender(repliedMsg) }}</span>
                           <span class="reply-preview-text">
-                            @if (repliedMsg?.deletedAt) {
+                            @if (repliedMsg && isDeletedMsg(repliedMsg)) {
                               <em>Message deleted</em>
                             } @else if (repliedMsg?.content) {
                               {{ repliedMsg!.content }}
@@ -304,7 +314,7 @@
                     }
 
                     <!-- Content -->
-                    @if (msg.deletedAt) {
+                    @if (isDeletedMsg(msg)) {
                       <span class="deleted-msg">
                         <i class="pi pi-ban"></i> This message was deleted
                       </span>
@@ -316,11 +326,51 @@
 
                     <div class="msg-footer">
                       <span class="msg-time">{{ formatMessageTime(msg.createdAt) }}</span>
-                      @if (msg.isEdited && !msg.deletedAt) {
+                      @if (msg.isEdited && !isDeletedMsg(msg)) {
                         <span class="edited-tag">edited</span>
                       }
-                      <!-- WhatsApp-style ticks for own messages -->
-                      @if (isOwnMessage(msg) && !msg.deletedAt) {
+                      <!-- Sender info icon: only on branch messages with originalSenderId -->
+                      @if (isOwnMessage(msg) && !msg._optimistic && !isDeletedMsg(msg) && msg.metadata?.['originalSenderId']) {
+                        <div class="sender-info-wrap" (click)="$event.stopPropagation()">
+                          <button
+                            class="sender-info-btn"
+                            (click)="toggleSenderPopover(msg._id, $event)"
+                            title="Sent by"
+                          >
+                            <i class="pi pi-info-circle"></i>
+                          </button>
+                          @if (activeSenderPopover() === msg._id) {
+                            <div class="sender-popover">
+                              @let profile = getOriginalSender(msg);
+                              @if (profile) {
+                                <div class="sender-popover-header">
+                                  <i class="pi pi-user"></i> Sent by
+                                </div>
+                                <div class="sender-popover-row">
+                                  <span class="sender-label">Username</span>
+                                  <span class="sender-value">{{ profile.username || '—' }}</span>
+                                </div>
+                                <div class="sender-popover-row">
+                                  <span class="sender-label">Full name</span>
+                                  <span class="sender-value">{{ profile.fullName || '—' }}</span>
+                                </div>
+                                <div class="sender-popover-row">
+                                  <span class="sender-label">Status</span>
+                                  <span class="sender-value" [class.sender-active]="profile.isActive">
+                                    {{ profile.isActive ? 'Active' : 'Inactive' }}
+                                  </span>
+                                </div>
+                              } @else {
+                                <div class="sender-loading">
+                                  <i class="pi pi-spin pi-spinner"></i> Loading…
+                                </div>
+                              }
+                            </div>
+                          }
+                        </div>
+                      }
+                      <!-- Read ticks for own messages -->
+                      @if (isOwnMessage(msg) && !isDeletedMsg(msg)) {
                         <span class="read-ticks" [class.seen]="isMessageRead(msg)">
                           <i class="pi pi-check tick"></i>
                           @if (!msg._optimistic) {
@@ -333,7 +383,7 @@
                 }
 
                 <!-- Emoji reaction trigger on hover -->
-                @if (!msg.deletedAt && editingMsgId() !== msg._id) {
+                @if (!isDeletedMsg(msg) && editingMsgId() !== msg._id) {
                   <div class="msg-emoji-action">
                     <button
                       type="button"
@@ -357,8 +407,12 @@
               @if (msg.reactions && msg.reactions.length > 0) {
                 <div class="reactions-row" [class.own]="isOwnMessage(msg)">
                   @for (r of msg.reactions; track r.emoji) {
-                    <button class="reaction-chip" (click)="toggleReaction(msg, r.emoji)">
-                      {{ r.emoji }}<span>{{ r.userIds.length }}</span>
+                    <button
+                      class="reaction-chip"
+                      [class.active]="isMyReaction(msg, r.emoji)"
+                      (click)="toggleReaction(msg, r.emoji)"
+                    >
+                      {{ r.emoji }}<span>{{ r.count ?? r.userIds.length }}</span>
                     </button>
                   }
                 </div>

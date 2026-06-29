@@ -1,0 +1,8 @@
+{
+  "buildCommand": "npm run build -- --configuration production",
+  "outputDirectory": "dist/frontend-pharmacy-portal2/browser",
+  "framework": "angular",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

@@ -1291,6 +1291,108 @@
   flex-shrink: 0;
 }
 
+// ── Reaction chip active state ────────────────────────────────────
+.reaction-chip.active {
+  background: var(--color-brand-surface);
+  border-color: var(--color-brand-primary);
+
+  span { color: var(--color-brand-primary); }
+}
+
+// Emoji picker button active state (already reacted)
+.emoji-btn.active {
+  background: var(--color-brand-surface);
+  outline: 2px solid var(--color-brand-primary);
+  border-radius: 6px;
+}
+
+// ── Sender info icon + popover ────────────────────────────────────
+.sender-info-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+}
+
+.sender-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: color 0.2s;
+  font-size: 12px;
+
+  &:hover { color: rgba(255, 255, 255, 0.9); }
+}
+
+.sender-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  padding: 10px 12px;
+  z-index: 200;
+}
+
+.sender-popover-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+
+  i { font-size: 11px; }
+}
+
+.sender-popover-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 12px;
+}
+
+.sender-label {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.sender-value {
+  color: var(--color-text-primary);
+  font-weight: 500;
+  text-align: right;
+  word-break: break-word;
+
+  &.sender-active { color: #22c55e; }
+}
+
+.sender-loading {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // RESPONSIVE
 // ═══════════════════════════════════════════════════════════════

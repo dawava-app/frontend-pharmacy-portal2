@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
-import { Conversation, ChatMessage } from '../models/chat.models';
+import { Conversation, ChatMessage, SenderProfile } from '../models/chat.models';
 
 function toArray<T>(res: unknown, ...extraKeys: string[]): T[] {
   if (Array.isArray(res)) return res as T[];
@@ -36,7 +36,7 @@ export class ChatApiService {
 
   listMessages(
     conversationId: string,
-    opts: { limit?: number; before?: string; after?: string } = {},
+    opts: { limit?: number; before?: string; after?: string; includeDeleted?: boolean } = {},
   ): Observable<ChatMessage[]> {
     let p = new HttpParams();
     Object.entries(opts).forEach(([k, v]) => { if (v != null) p = p.set(k, String(v)); });
@@ -96,6 +96,22 @@ export class ChatApiService {
         return { fullName: name ?? userId };
       }),
       catchError(() => of({ fullName: userId })),
+    );
+  }
+
+  getOriginalSenderProfile(userId: string): Observable<SenderProfile> {
+    return this.http.get<Record<string, unknown>>(`${this.apiBase}/users/profile/${userId}`).pipe(
+      map(r => {
+        const data = (r['data'] as Record<string, unknown> | undefined) ?? r;
+        return {
+          id:       (data['id']       as string)  ?? userId,
+          username: (data['username'] as string)  ?? '',
+          fullName: (data['fullName'] as string)  ?? (data['full_name'] as string) ?? '',
+          email:    (data['email']    as string)  ?? '',
+          isActive: (data['isActive'] as boolean) ?? true,
+        };
+      }),
+      catchError(() => of({ id: userId, username: '', fullName: userId, email: '', isActive: false })),
     );
   }
 

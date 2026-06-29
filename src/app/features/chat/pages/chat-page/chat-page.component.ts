@@ -10,7 +10,7 @@ import { TokenService } from '../../../../core/auth/token.service';
 import { ChatSocketService } from '../../../../core/services/chat-socket.service';
 import { ChatApiService } from '../../services/chat-api.service';
 import { FileService } from '../../../../core/services/file.service';
-import { Conversation, ChatMessage, PresenceState } from '../../models/chat.models';
+import { Conversation, ChatMessage, PresenceState, SenderProfile } from '../../models/chat.models';
 
 // Fixed tenant/entity for file uploads (pharmacy platform default)
 const UPLOAD_TENANT_ID = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
@@ -56,13 +56,19 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
   readonly attachmentUrls       = signal<Record<string, string>>({});
   readonly pendingAttachment    = signal<PendingAttachment | null>(null);
   readonly uploadingFile        = signal(false);
-  readonly emojiPickerForMsg    = signal<string | null>(null);
+  readonly emojiPickerForMsg      = signal<string | null>(null);
   // Message action menu (Edit / Delete / React)
-  readonly selectedMsgForAction = signal<string | null>(null);
+  readonly selectedMsgForAction   = signal<string | null>(null);
   // Inline edit state
-  readonly editingMsgId         = signal<string | null>(null);
+  readonly editingMsgId           = signal<string | null>(null);
   // Conversation context menu
-  readonly convMenuOpen         = signal<string | null>(null);
+  readonly convMenuOpen           = signal<string | null>(null);
+  // Original sender profile cache (keyed by originalSenderId)
+  readonly originalSenderProfiles = signal<Record<string, SenderProfile>>({});
+  // Which message's sender popover is open
+  readonly activeSenderPopover    = signal<string | null>(null);
+  // Message IDs hidden locally ("delete for me")
+  readonly hiddenMessageIds       = signal<string[]>([]);
 
   // ── Local state ─────────────────────────────────────────────────────────
   messageText = '';
@@ -70,7 +76,8 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
   readonly skeletons     = [1, 2, 3, 4, 5];
   readonly COMMON_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👏', '🔥', '✅', '🙌', '🎉', '😊', '🤔'];
 
-  private readonly profileFetchAttempted = new Set<string>();
+  private readonly profileFetchAttempted         = new Set<string>();
+  private readonly originalSenderFetchAttempted  = new Set<string>();
   private isTypingActive = false;
   private typingTimeout?: ReturnType<typeof setTimeout>;
   private pingInterval?: ReturnType<typeof setInterval>;
@@ -79,6 +86,11 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
 
   // ── Computed ─────────────────────────────────────────────────────────────
   readonly isManager = computed(() => this.auth.userRole() === 'manager');
+
+  readonly visibleMessages = computed(() => {
+    const hidden = this.hiddenMessageIds();
+    return hidden.length ? this.messages().filter(m => !hidden.includes(m._id)) : this.messages();
+  });
 
   readonly filteredConversations = computed(() => {
     const q     = this.searchQuery().toLowerCase().trim();
@@ -93,6 +105,7 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.emojiPickerForMsg.set(null);
     this.selectedMsgForAction.set(null);
     this.convMenuOpen.set(null);
+    this.activeSenderPopover.set(null);
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -168,6 +181,36 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
       });
   }
 
+  private preloadOriginalSenderProfiles(msgs: ChatMessage[]): void {
+    const unique = [...new Set(
+      msgs
+        .map(m => m.metadata?.['originalSenderId'] as string | undefined)
+        .filter((id): id is string => !!id)
+    )];
+    unique.forEach(id => this.fetchAndCacheOriginalSender(id));
+  }
+
+  private fetchAndCacheOriginalSender(originalSenderId: string): void {
+    if (this.originalSenderProfiles()[originalSenderId] || this.originalSenderFetchAttempted.has(originalSenderId)) return;
+    this.originalSenderFetchAttempted.add(originalSenderId);
+    this.api.getOriginalSenderProfile(originalSenderId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(profile => {
+        this.originalSenderProfiles.update(cache => ({ ...cache, [originalSenderId]: profile }));
+      });
+  }
+
+  getOriginalSender(msg: ChatMessage): SenderProfile | null {
+    const id = msg.metadata?.['originalSenderId'] as string | undefined;
+    if (!id) return null;
+    return this.originalSenderProfiles()[id] ?? null;
+  }
+
+  toggleSenderPopover(msgId: string, event: MouseEvent): void {
+    event.stopPropagation();
+    this.activeSenderPopover.set(this.activeSenderPopover() === msgId ? null : msgId);
+  }
+
   selectConversation(conv: Conversation): void {
     const prev = this.selectedConversation();
     if (prev?._id === conv._id) return;
@@ -195,7 +238,7 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
 
   private fetchMessages(conversationId: string, before?: string): void {
     this.messagesLoading.set(true);
-    this.api.listMessages(conversationId, { limit: 30, ...(before ? { before } : {}) })
+    this.api.listMessages(conversationId, { limit: 30, includeDeleted: true, ...(before ? { before } : {}) })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: msgs => {
@@ -220,6 +263,7 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
           this.canLoadMore.set(sorted.length >= 30);
           this.messagesLoading.set(false);
           this.preloadMessageSenderProfiles(sorted);
+          this.preloadOriginalSenderProfiles(sorted);
         },
         error: () => this.messagesLoading.set(false),
       });
@@ -372,9 +416,13 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
   }
 
   // ── Message action menu ───────────────────────────────────────────────────
+  isDeletedMsg(msg: ChatMessage): boolean {
+    return msg.isDeleted === true || !!msg.deletedAt;
+  }
+
   onMessageClick(msg: ChatMessage, event: MouseEvent): void {
     event.stopPropagation();
-    if (msg.deletedAt) return;
+    if (this.isDeletedMsg(msg)) return;
     this.selectedMsgForAction.set(this.selectedMsgForAction() === msg._id ? null : msg._id);
     this.emojiPickerForMsg.set(null);
   }
@@ -423,7 +471,12 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.editText = '';
   }
 
-  doDeleteMessage(msg: ChatMessage): void {
+  deleteForMe(msg: ChatMessage): void {
+    this.selectedMsgForAction.set(null);
+    this.hiddenMessageIds.update(ids => [...ids, msg._id]);
+  }
+
+  deleteForEveryone(msg: ChatMessage): void {
     this.selectedMsgForAction.set(null);
     this.api.deleteMessage(msg._id)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -431,7 +484,7 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
         next: () => {
           this.messages.update(list =>
             list.map(m => m._id === msg._id
-              ? { ...m, deletedAt: new Date().toISOString() }
+              ? { ...m, isDeleted: true, deletedAt: new Date().toISOString() }
               : m
             )
           );
@@ -510,11 +563,16 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
     clearTimeout(this.typingTimeout);
   }
 
-  // ── Reactions (with optimistic update) ────────────────────────────────────
+  // ── Reactions (Discord style: multiple per user, same emoji toggles off) ────
   toggleReaction(msg: ChatMessage, emoji: string): void {
-    const myId      = this.auth.getUserId() ?? '';
+    const myId     = this.auth.getUserId() ?? '';
+    const branchId = this.auth.currentBranchId() ?? '';
     const existing  = msg.reactions?.find(r => r.emoji === emoji);
-    const hasReacted = existing?.userIds.includes(myId) ?? false;
+    // Use server's hasReacted flag if available, otherwise check userIds directly
+    const hasReacted = existing?.hasReacted
+      ?? existing?.userIds.includes(myId)
+      ?? existing?.userIds.includes(branchId)
+      ?? false;
 
     // Optimistic UI update
     this.messages.update(list =>
@@ -522,18 +580,20 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
         if (m._id !== msg._id) return m;
         let reactions = [...(m.reactions ?? [])];
         if (hasReacted) {
+          // Same emoji clicked again → remove it
           reactions = reactions
             .map(r => r.emoji === emoji
-              ? { ...r, userIds: r.userIds.filter(id => id !== myId) }
+              ? { ...r, userIds: r.userIds.filter(id => id !== myId && id !== branchId), hasReacted: false }
               : r
             )
             .filter(r => r.userIds.length > 0);
         } else {
+          // Discord style: add alongside existing reactions (no stripping)
           const idx = reactions.findIndex(r => r.emoji === emoji);
           if (idx === -1) {
-            reactions.push({ emoji, userIds: [myId] });
+            reactions.push({ emoji, userIds: [myId], hasReacted: true });
           } else {
-            reactions[idx] = { ...reactions[idx], userIds: [...reactions[idx].userIds, myId] };
+            reactions[idx] = { ...reactions[idx], userIds: [...reactions[idx].userIds, myId], hasReacted: true };
           }
         }
         return { ...m, reactions };
@@ -545,6 +605,14 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
       ? this.api.removeReaction(msg._id, emoji)
       : this.api.addReaction(msg._id, emoji);
     obs.pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
+  }
+
+  isMyReaction(msg: ChatMessage, emoji: string): boolean {
+    const myId     = this.auth.getUserId() ?? '';
+    const branchId = this.auth.currentBranchId() ?? '';
+    const r = msg.reactions?.find(r => r.emoji === emoji);
+    if (!r) return false;
+    return r.hasReacted ?? (r.userIds.includes(myId) || r.userIds.includes(branchId));
   }
 
   // ── Socket listeners ──────────────────────────────────────────────────────
@@ -637,6 +705,10 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.socket.reactionAdded$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(e => {
+        const myId     = this.auth.getUserId() ?? '';
+        const branchId = this.auth.currentBranchId() ?? '';
+        // Own reaction already applied via optimistic update — skip to avoid double-count
+        if (e.userId === myId || (branchId && e.userId === branchId)) return;
         this.messages.update(list =>
           list.map(m => {
             if (m._id !== e.messageId) return m;
@@ -655,6 +727,10 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.socket.reactionRemoved$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(e => {
+        const myId     = this.auth.getUserId() ?? '';
+        const branchId = this.auth.currentBranchId() ?? '';
+        // Own removal already applied via optimistic update — skip to avoid ghost restore
+        if (e.userId === myId || (branchId && e.userId === branchId)) return;
         this.messages.update(list =>
           list.map(m => {
             if (m._id !== e.messageId) return m;
@@ -695,6 +771,8 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
       if (!this.isOwnMessage(msg) && !this.profileNames()[msg.senderId]) {
         this.fetchAndCacheProfile(msg.senderId);
       }
+      const originalSenderId = msg.metadata?.['originalSenderId'] as string | undefined;
+      if (originalSenderId) this.fetchAndCacheOriginalSender(originalSenderId);
     }
 
     this.conversations.update(list =>
