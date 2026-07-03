@@ -16,7 +16,6 @@ export const routes: Routes = [
   /* ── Onboarding ── */
   {
     path: 'onboarding',
-    canActivate: [authGuard],
     children: onboardingRoutes,
   },
 

@@ -1,5 +1,5 @@
 import { Component, inject, signal, OnInit, DestroyRef } from '@angular/core';
-import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
+import { RouterOutlet, Router, NavigationEnd, ActivatedRoute } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
@@ -8,6 +8,7 @@ import { OnboardingStepperComponent } from '../components/stepper/onboarding-ste
 import { OnboardingStateService } from '../services/onboarding-state.service';
 import { ApplicationsService } from '../services/applications.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { TokenService } from '../../../core/auth/token.service';
 
 const STATUS_PAGES = ['pending', 'rejected', 'approved', 'success'];
 
@@ -20,9 +21,11 @@ const STATUS_PAGES = ['pending', 'rejected', 'approved', 'success'];
 })
 export class OnboardingLayoutComponent implements OnInit {
   private readonly router     = inject(Router);
+  private readonly route      = inject(ActivatedRoute);
   private readonly state      = inject(OnboardingStateService);
   private readonly apps       = inject(ApplicationsService);
   private readonly auth       = inject(AuthService);
+  private readonly tokens     = inject(TokenService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly theme       = inject(ThemeService);
@@ -37,8 +40,17 @@ export class OnboardingLayoutComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.readTokenFromUrl();
     this.updateStepperState();
     this.runStatusCheck();
+  }
+
+  private readTokenFromUrl(): void {
+    const token = this.route.snapshot.queryParamMap.get('token');
+    if (token) {
+      this.tokens.setAccessToken(token);
+      this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
+    }
   }
 
   private updateStepperState(): void {
