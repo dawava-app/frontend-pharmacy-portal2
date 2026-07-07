@@ -1,5 +1,5 @@
 import {
-  Component, Input, OnDestroy, OnChanges,
+  Component, Input, Output, EventEmitter, OnDestroy, OnChanges,
   ElementRef, ViewChild, AfterViewInit,
 } from '@angular/core';
 
@@ -18,6 +18,10 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() zoom = 14;
   @Input() label = 'Branch Location';
 
+  // Fires on a genuine tap/click on the map (Leaflet already excludes drag-end from this),
+  // with the clicked coordinates so callers can use the map for location selection.
+  @Output() locationClick = new EventEmitter<{ lat: number; lng: number }>();
+
   @ViewChild('mapEl', { static: true }) mapEl!: ElementRef<HTMLDivElement>;
 
   private map: any;
@@ -31,6 +35,7 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (this.map) {
       this.map.setView([this.lat, this.lng], this.zoom);
       this.marker?.setLatLng([this.lat, this.lng]);
+      this.marker?.setPopupContent(`<b>${this.label}</b>`);
     }
   }
 
@@ -59,6 +64,8 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
       .addTo(this.map)
       .bindPopup(`<b>${this.label}</b>`)
       .openPopup();
+
+    this.map.on('click', (e: any) => this.locationClick.emit({ lat: e.latlng.lat, lng: e.latlng.lng }));
   }
 
   ngOnDestroy() {

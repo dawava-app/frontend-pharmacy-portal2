@@ -1,6 +1,7 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { UserProfileService } from '../../../../shared/services/user-profile.service';
 import { MapComponent } from '../../../../shared/components/map/map.component';
 
 @Component({
@@ -10,8 +11,9 @@ import { MapComponent } from '../../../../shared/components/map/map.component';
   templateUrl: './staff-dashboard.component.html',
   styleUrl:    './staff-dashboard.component.scss',
 })
-export class StaffDashboardComponent {
-  private readonly auth = inject(AuthService);
+export class StaffDashboardComponent implements OnInit {
+  private readonly auth           = inject(AuthService);
+  private readonly userProfileSvc = inject(UserProfileService);
   today = new Date();
 
   greeting = computed(() => {
@@ -22,14 +24,31 @@ export class StaffDashboardComponent {
   });
 
   firstName = computed(() => {
-    const name = this.auth.currentUser()?.fullName || 'User';
+    const name = this.userProfileSvc.profile()?.fullName
+              ?? this.auth.currentUser()?.fullName
+              ?? 'User';
     return name.split(' ')[0];
   });
 
-  /* Static branch location – will be replaced by real API data */
-  branchLat = 24.7136;
-  branchLng = 46.6753;
-  branchLabel = 'Main Branch – Riyadh';
+  pharmacyName  = this.userProfileSvc.pharmacyName;
+  branchName    = this.userProfileSvc.branchName;
+  branchAddress = this.userProfileSvc.branchAddress;
+  branchLat     = this.userProfileSvc.branchLat;
+  branchLng     = this.userProfileSvc.branchLng;
+
+  branchLabel = computed(() => {
+    const name = this.userProfileSvc.branchName();
+    return name || 'Main Branch';
+  });
+
+  ngOnInit(): void {
+    if (!this.userProfileSvc.profileLoaded()) {
+      this.userProfileSvc.loadProfile().subscribe();
+    }
+    if (!this.userProfileSvc.branchLoaded()) {
+      this.userProfileSvc.loadBranch().subscribe();
+    }
+  }
 
   stats = [
     { label: 'Total Medicines', value: '1,240', trend: '+2% from last month', up: true, icon: 'pi-prime', color: 'default' },

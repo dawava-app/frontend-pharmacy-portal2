@@ -1,8 +1,9 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
-const ACCESS_TOKEN_KEY  = 'auth_token';
-const REFRESH_TOKEN_KEY = 'refresh_token';
+const ACCESS_TOKEN_KEY   = 'auth_token';
+const REFRESH_TOKEN_KEY  = 'refresh_token';
+const DEFAULT_BRANCH_KEY = 'default_branch_id';
 
 @Injectable({ providedIn: 'root' })
 export class TokenService {
@@ -36,11 +37,20 @@ export class TokenService {
     return this.isBrowser ? localStorage.getItem(REFRESH_TOKEN_KEY) : null;
   }
 
+  setDefaultBranchId(branchId: string): void {
+    if (this.isBrowser) localStorage.setItem(DEFAULT_BRANCH_KEY, branchId);
+  }
+
+  getDefaultBranchId(): string | null {
+    return this.isBrowser ? localStorage.getItem(DEFAULT_BRANCH_KEY) : null;
+  }
+
   clearAll(): void {
     this._accessToken = null;
     if (this.isBrowser) {
       localStorage.removeItem(ACCESS_TOKEN_KEY);
       localStorage.removeItem(REFRESH_TOKEN_KEY);
+      localStorage.removeItem(DEFAULT_BRANCH_KEY);
     }
   }
 

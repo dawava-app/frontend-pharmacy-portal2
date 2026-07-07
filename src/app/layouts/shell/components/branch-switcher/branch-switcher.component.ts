@@ -1,6 +1,7 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, HostListener, ElementRef } from '@angular/core';
 import { AuthService } from '../../../../core/auth/auth.service';
-import { Scope } from '../../../../shared/models/auth.model';
+import { UserProfileService } from '../../../../shared/services/user-profile.service';
+import { WorkspaceService } from '../../../../shared/services/workspace.service';
 
 @Component({
   selector: 'app-branch-switcher',
@@ -9,38 +10,101 @@ import { Scope } from '../../../../shared/models/auth.model';
   styleUrl: './branch-switcher.component.scss',
 })
 export class BranchSwitcherComponent {
-  private readonly auth = inject(AuthService);
+  private readonly auth           = inject(AuthService);
+  private readonly userProfileSvc = inject(UserProfileService);
+  private readonly workspaceSvc   = inject(WorkspaceService);
+  private readonly elementRef     = inject(ElementRef<HTMLElement>);
 
-  isOpen    = signal(false);
-  switching = signal(false);
+  isOpen        = signal(false);
+  switching     = signal(false);
+  makingDefault = signal<string | null>(null);
+  error         = signal('');
 
-  availableScopes     = computed(() => this.auth.availableScopes());
-  currentBranchId     = computed(() => this.auth.currentBranchId());
-  hasMultipleBranches = computed(() => this.availableScopes().length > 1);
+  hasMultipleBranches = computed(() => this.workspaceSvc.hasMultipleBranches());
+  loadingDetails       = computed(() => this.workspaceSvc.loading());
+  groupedWorkspaces     = computed(() => this.workspaceSvc.groupedWorkspaces());
+  defaultBranchId       = computed(() => this.workspaceSvc.defaultBranchId());
 
-  currentBranchLabel = computed(() => {
-    const scopes = this.availableScopes();
-    const current = this.currentBranchId();
-    const idx = scopes.findIndex(s => s.branch_id === current);
-    return this.labelFor(scopes[idx], idx);
-  });
+  currentBranchId = computed(() => this.auth.currentBranchId());
+  pharmacyName    = computed(() => this.userProfileSvc.pharmacyName() || 'Pharmacy');
+  branchName      = computed(() => this.userProfileSvc.branchName() || 'Branch');
+  branchPhotoUrl  = this.userProfileSvc.branchPhotoUrl;
 
-  labelFor(scope: Scope | undefined, index: number): string {
-    if (!scope) return 'Current Branch';
-    return scope.branch_name || `Branch ${index + 1}`;
+  /** Managers set their pharmacy-wide default branch from Settings → Pharmacy & Branch instead. */
+  isManager = computed(() => this.auth.userRole() === 'manager');
+
+  isDefaultBranch(branchId: string): boolean {
+    return this.defaultBranchId() === branchId;
   }
 
-  toggle(): void { this.isOpen.update(v => !v); }
-  close():  void { this.isOpen.set(false); }
+  /** First letter for the avatar badge — purely presentational. */
+  initial(name: string): string {
+    return (name || '?').trim().charAt(0).toUpperCase();
+  }
+
+  toggle(): void {
+    if (!this.hasMultipleBranches()) return;
+    const opening = !this.isOpen();
+    this.isOpen.set(opening);
+    if (opening) {
+      this.error.set('');
+      this.workspaceSvc.loadBranchDetails().subscribe();
+    }
+  }
+
+  close(): void { this.isOpen.set(false); }
 
   switchTo(branchId: string): void {
     if (branchId === this.currentBranchId() || this.switching()) { this.close(); return; }
     this.switching.set(true);
-    this.close();
+    this.error.set('');
 
-    this.auth.switchBranch(branchId).subscribe({
-      complete: () => this.switching.set(false),
-      error:    () => this.switching.set(false),
+    this.workspaceSvc.switchTo(branchId).subscribe({
+      next: () => {
+        this.switching.set(false);
+        this.close();
+      },
+      error: () => {
+        this.switching.set(false);
+        this.error.set('Failed to switch branch. Please try again.');
+      },
     });
+  }
+
+  makeDefault(event: MouseEvent, branchId: string): void {
+    event.stopPropagation();
+    if (this.makingDefault()) return;
+    this.makingDefault.set(branchId);
+    this.error.set('');
+
+    this.workspaceSvc.makeDefault(branchId).subscribe({
+      next: () => this.makingDefault.set(null),
+      error: () => {
+        this.makingDefault.set(null);
+        this.error.set('Failed to set default branch. Please try again.');
+      },
+    });
+  }
+
+  onOptionKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+
+    const options = Array.from(
+      this.elementRef.nativeElement.querySelectorAll('.branch-option'),
+    ) as HTMLButtonElement[];
+    const currentIndex = options.indexOf(document.activeElement as HTMLButtonElement);
+    if (currentIndex === -1) return;
+
+    const nextIndex = event.key === 'ArrowDown'
+      ? Math.min(currentIndex + 1, options.length - 1)
+      : Math.max(currentIndex - 1, 0);
+
+    options[nextIndex]?.focus();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+    this.close();
   }
 }

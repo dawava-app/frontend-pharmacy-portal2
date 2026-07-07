@@ -115,7 +115,8 @@
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: 14px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .loader-row,
@@ -204,12 +205,10 @@
 @media (max-width: 768px) {
   .page { padding: 16px; }
 
+  // Hide the "Submitted" date column only — keep the trailing arrow column
+  // visible since it's the only visual cue that a row is clickable.
   .data-table th:nth-child(4),
-  .data-table td:nth-child(4),
-  .data-table th:nth-child(5),
-  .data-table td:nth-child(5),
-  .data-table th:nth-child(7),
-  .data-table td:nth-child(7) {
+  .data-table td:nth-child(4) {
     display: none;
   }
 }

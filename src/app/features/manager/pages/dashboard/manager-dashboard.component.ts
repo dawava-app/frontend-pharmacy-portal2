@@ -1,7 +1,7 @@
 import { Component, inject, computed, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { OnboardingStateService } from '../../../onboarding/services/onboarding-state.service';
+import { UserProfileService } from '../../../../shared/services/user-profile.service';
 import { MapComponent } from '../../../../shared/components/map/map.component';
 
 @Component({
@@ -12,36 +12,40 @@ import { MapComponent } from '../../../../shared/components/map/map.component';
   styleUrl:    './manager-dashboard.component.scss',
 })
 export class ManagerDashboardComponent implements OnInit {
-  private readonly auth   = inject(AuthService);
-  private readonly state  = inject(OnboardingStateService);
-  private readonly router = inject(Router);
+  private readonly auth           = inject(AuthService);
+  private readonly state          = inject(OnboardingStateService);
+  private readonly userProfileSvc = inject(UserProfileService);
 
   firstName = computed(() => {
-    const name = this.auth.currentUser()?.fullName || 'Manager';
+    const name = this.userProfileSvc.profile()?.fullName
+              ?? this.auth.currentUser()?.fullName
+              ?? 'Manager';
     return name.split(' ')[0];
   });
 
+  pharmacyName = this.userProfileSvc.pharmacyName;
+  branchName   = this.userProfileSvc.branchName;
+  branchAddress = this.userProfileSvc.branchAddress;
+
   branchLabel = computed(() => {
+    const real = this.userProfileSvc.branchName();
+    if (real) return real;
     const scopes    = this.auth.availableScopes();
     const currentId = this.auth.currentBranchId();
     const scope     = scopes.find(s => s.branch_id === currentId) ?? scopes[0];
-    return scope?.branch_name
-      ?? this.state.branchInfo()?.branchName
-      ?? 'Main Branch';
+    return scope?.branch_name ?? this.state.branchInfo()?.branchName ?? 'Main Branch';
   });
 
-  branchLat = 30.0444;
-  branchLng = 31.2357;
+  branchLat = computed(() => this.userProfileSvc.branchLat());
+  branchLng = computed(() => this.userProfileSvc.branchLng());
 
   ngOnInit(): void {
-    const info = this.state.branchInfo();
-    if (info?.lat != null) this.branchLat = info.lat;
-    if (info?.lng != null) this.branchLng = info.lng;
-  }
-
-  applyForNewPharmacy(): void {
-    this.state.clearApplication();
-    this.router.navigate(['/onboarding/step1']);
+    if (!this.userProfileSvc.profileLoaded()) {
+      this.userProfileSvc.loadProfile().subscribe();
+    }
+    if (!this.userProfileSvc.branchLoaded()) {
+      this.userProfileSvc.loadBranch().subscribe();
+    }
   }
 
   stats = [

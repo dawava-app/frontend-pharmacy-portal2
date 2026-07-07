@@ -16,5 +16,12 @@ export const staffRoutes: Routes = [
     loadComponent: () => import('../chat/pages/chat-page/chat-page.component').then(m => m.ChatPageComponent),
   },
   { path: 'reports',   loadComponent: placeholder },
-  { path: 'settings',  loadComponent: placeholder },
+  {
+    path: 'settings',
+    loadComponent: () => import('../settings/settings.component').then(m => m.SettingsComponent),
+  },
+  {
+    path: 'settings/sessions',
+    loadComponent: () => import('../settings/pages/sessions/sessions.component').then(m => m.SessionsComponent),
+  },
 ];

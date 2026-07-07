@@ -93,6 +93,7 @@
   &__label {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 6px;
     font-size: 0.82rem;
     font-weight: 600;

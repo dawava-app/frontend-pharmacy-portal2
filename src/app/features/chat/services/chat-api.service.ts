@@ -86,16 +86,16 @@ export class ChatApiService {
     );
   }
 
-  getUserProfile(userId: string): Observable<{ fullName: string }> {
+  getUserProfile(userId: string): Observable<{ fullName: string; imageId?: string }> {
     return this.http.get<Record<string, unknown>>(`${this.apiBase}/users/profile/${userId}`).pipe(
       map(r => {
         const data = (r['data'] as Record<string, unknown> | undefined) ?? r;
         const name = (
           data['fullName'] ?? data['full_name'] ?? data['name'] ?? data['username'] ?? data['displayName']
         ) as string | undefined;
-        return { fullName: name ?? userId };
+        return { fullName: name ?? userId, imageId: data['imageId'] as string | undefined };
       }),
-      catchError(() => of({ fullName: userId })),
+      catchError(() => of({ fullName: userId, imageId: undefined })),
     );
   }
 

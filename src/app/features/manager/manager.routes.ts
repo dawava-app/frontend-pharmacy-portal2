@@ -17,5 +17,12 @@ export const managerRoutes: Routes = [
   },
   { path: 'staff',     loadComponent: placeholder },
   { path: 'reports',   loadComponent: placeholder },
-  { path: 'settings',  loadComponent: placeholder },
+  {
+    path: 'settings',
+    loadComponent: () => import('../settings/settings.component').then(m => m.SettingsComponent),
+  },
+  {
+    path: 'settings/sessions',
+    loadComponent: () => import('../settings/pages/sessions/sessions.component').then(m => m.SessionsComponent),
+  },
 ];

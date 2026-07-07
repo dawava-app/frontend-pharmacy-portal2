@@ -1,0 +1,753 @@
+<!-- Page Header -->
+<div class="page-header">
+  <div class="breadcrumb">
+    <i class="pi pi-cog"></i>
+    <span class="sep">·</span>
+    <span class="active">Settings</span>
+  </div>
+  <h1 class="page-title">Account Settings</h1>
+  <p class="page-sub">Manage your profile, branch details, and security preferences.</p>
+</div>
+
+<!-- Settings Layout -->
+<div class="settings-layout">
+
+  <!-- Left navigation -->
+  <nav class="settings-nav">
+    <button class="nav-tab" [class.active]="tab() === 'profile'" (click)="setTab('profile')">
+      <i class="pi pi-user"></i>
+      <span>Profile</span>
+    </button>
+    <button class="nav-tab" [class.active]="tab() === 'branch'" (click)="setTab('branch')">
+      <i class="pi pi-building"></i>
+      <span>Branch Info</span>
+    </button>
+    <button class="nav-tab" [class.active]="tab() === 'security'" (click)="setTab('security')">
+      <i class="pi pi-lock"></i>
+      <span>Security</span>
+    </button>
+    <div class="nav-divider"></div>
+    <button class="nav-tab sessions-link" (click)="goToSessions()">
+      <i class="pi pi-desktop"></i>
+      <span>Sessions</span>
+      <i class="pi pi-arrow-right nav-arrow"></i>
+    </button>
+  </nav>
+
+  <!-- Right content -->
+  <div class="settings-content">
+
+    <!-- ─── PROFILE TAB ─── -->
+    @if (tab() === 'profile') {
+
+      <!-- Account info card -->
+      <div class="settings-card">
+        <h3 class="card-title">
+          <i class="pi pi-id-card"></i> Account Information
+        </h3>
+
+        <div class="info-grid">
+          <div class="info-field">
+            <p class="field-label">Full Name</p>
+            <p class="field-value">{{ displayUser()?.fullName || '—' }}</p>
+          </div>
+          <div class="info-field">
+            <p class="field-label">Username</p>
+            <p class="field-value">&#64;{{ displayUser()?.username || '—' }}</p>
+          </div>
+          <div class="info-field">
+            <p class="field-label">Email Address</p>
+            <p class="field-value">{{ displayUser()?.email || '—' }}</p>
+          </div>
+          <div class="info-field">
+            <p class="field-label">Phone Number</p>
+            <p class="field-value">{{ displayUser()?.phone || '—' }}</p>
+          </div>
+          <div class="info-field">
+            <p class="field-label">Account Status</p>
+            <div class="field-value">
+              @if (displayUser()?.isActive) {
+                <span class="status-pill active"><span class="pill-dot"></span> Active</span>
+              } @else {
+                <span class="status-pill inactive"><span class="pill-dot"></span> Inactive</span>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+    }
+
+    <!-- ─── BRANCH INFO TAB ─── -->
+    @if (tab() === 'branch') {
+
+      @if (!isManager()) {
+        <div class="settings-card">
+          <h3 class="card-title">
+            <i class="pi pi-building"></i> Pharmacy &amp; Branch
+          </h3>
+
+          @if (branchLoading()) {
+            <div class="loading-state">
+              <span class="spinner-brand"></span>
+              <span>Loading branch information…</span>
+            </div>
+          } @else if (branch()) {
+            <div class="info-grid">
+              <div class="info-field">
+                <p class="field-label">Pharmacy Name</p>
+                <p class="field-value">{{ branch()!.pharmacyName }}</p>
+              </div>
+              <div class="info-field">
+                <p class="field-label">Branch Name</p>
+                <p class="field-value">{{ branch()!.branchName }}</p>
+              </div>
+              <div class="info-field full">
+                <p class="field-label">Address</p>
+                <p class="field-value">{{ branch()!.addressText }}</p>
+              </div>
+              <div class="info-field">
+                <p class="field-label">City</p>
+                <p class="field-value">{{ branch()!.city }}</p>
+              </div>
+              <div class="info-field">
+                <p class="field-label">Branch Phone</p>
+                <p class="field-value">{{ branch()!.phone }}</p>
+              </div>
+              <div class="info-field">
+                <p class="field-label">Status</p>
+                <div class="field-value">
+                  @if (branch()!.isActive) {
+                    <span class="status-pill active"><span class="pill-dot"></span> Active</span>
+                  } @else {
+                    <span class="status-pill inactive"><span class="pill-dot"></span> Inactive</span>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div class="map-label-row">
+              <div class="map-label">
+                <i class="pi pi-map-marker" style="color: var(--color-brand-primary)"></i>
+                {{ branch()!.branchName }} — {{ branch()!.addressText }}
+              </div>
+              <div class="map-actions">
+                <button class="map-action-btn" (click)="openInMaps()" [disabled]="!hasValidLocation()">
+                  <i class="pi pi-external-link"></i> Open in Maps
+                </button>
+                <button class="map-action-btn" (click)="shareLocation()" [disabled]="!hasValidLocation()">
+                  <i class="pi pi-share-alt"></i> Share Location
+                </button>
+              </div>
+            </div>
+
+            @if (branchNotif()) {
+              <div class="notif" [class.success]="branchNotif()!.type === 'success'" [class.error]="branchNotif()!.type === 'error'">
+                <i [class]="branchNotif()!.type === 'success' ? 'pi pi-check-circle' : 'pi pi-exclamation-circle'"></i>
+                {{ branchNotif()!.msg }}
+              </div>
+            }
+
+            <div class="map-wrap" [class.clickable]="hasValidLocation()">
+              <app-map
+                [lat]="branch()!.latitude"
+                [lng]="branch()!.longitude"
+                [label]="branch()!.branchName"
+                (locationClick)="openInMaps()"
+              />
+            </div>
+          } @else {
+            <div class="empty-state">
+              <i class="pi pi-building"></i>
+              <p>No branch information available.</p>
+            </div>
+          }
+        </div>
+
+      } @else {
+
+        <!-- ─── Pharmacy Information (manager only) ─── -->
+        <div class="settings-card">
+          <h3 class="card-title">
+            <i class="pi pi-shop"></i> Pharmacy Information
+          </h3>
+
+          @if (pharmacyLoading()) {
+            <div class="loading-state">
+              <span class="spinner-brand"></span>
+              <span>Loading pharmacy information…</span>
+            </div>
+          } @else if (pharmacy(); as p) {
+
+            <div class="avatar-section">
+              <div class="avatar-wrap" [class.clickable]="pharmacyPhotoUrl()" (click)="openPhotoPreview(pharmacyPhotoUrl())">
+                @if (pharmacyPhotoUrl()) {
+                  <img [src]="pharmacyPhotoUrl()" class="avatar-img" alt="Pharmacy photo"/>
+                  <div class="avatar-zoom-hint"><i class="pi pi-search-plus"></i></div>
+                } @else {
+                  <div class="avatar-initials">{{ initial(p.displayName) }}</div>
+                }
+              </div>
+
+              <div class="avatar-meta">
+                <h2 class="avatar-name">{{ p.displayName || 'Pharmacy' }}</h2>
+                <p class="avatar-username">{{ p.legalName }}</p>
+
+                <div class="upload-btn-row">
+                  <button class="btn-upload" (click)="triggerPharmacyFileInput()" [disabled]="uploadingPharmacyPhoto() || deletingPharmacyPhoto()">
+                    @if (uploadingPharmacyPhoto()) {
+                      <span class="spinner"></span> Uploading…
+                    } @else {
+                      <i class="pi pi-cloud-upload"></i> Upload Photo
+                    }
+                  </button>
+
+                  @if (p.photoFileId) {
+                    <button class="btn-remove" (click)="deletePharmacyPhotoAction()" [disabled]="uploadingPharmacyPhoto() || deletingPharmacyPhoto()">
+                      @if (deletingPharmacyPhoto()) {
+                        <span class="spinner spinner-dark"></span> Removing…
+                      } @else {
+                        <i class="pi pi-trash"></i> Remove
+                      }
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <input #pharmacyFileInput type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="onPharmacyFileSelected($event)"/>
+
+            @if (!editingPharmacy()) {
+              <div class="info-grid">
+                <div class="info-field">
+                  <p class="field-label">Legal Name</p>
+                  <p class="field-value">{{ p.legalName }}</p>
+                </div>
+                <div class="info-field">
+                  <p class="field-label">Display Name</p>
+                  <p class="field-value">{{ p.displayName }}</p>
+                </div>
+                <div class="info-field">
+                  <p class="field-label">Status</p>
+                  <div class="field-value">
+                    <span class="status-pill" [class.active]="p.isActive" [class.inactive]="!p.isActive">
+                      <span class="pill-dot"></span> {{ p.isActive ? 'Active' : 'Inactive' }}
+                    </span>
+                  </div>
+                </div>
+                <div class="info-field">
+                  <p class="field-label">Verification Status</p>
+                  <div class="field-value">
+                    <span class="status-pill" [class.active]="p.isVerified" [class.inactive]="!p.isVerified">
+                      <span class="pill-dot"></span> {{ p.isVerified ? 'Verified' : 'Unverified' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-footer">
+                <button class="btn-upload" (click)="startEditPharmacy()"><i class="pi pi-pencil"></i> Edit Pharmacy Info</button>
+              </div>
+            } @else {
+              <div class="form-group">
+                <label>Legal Name</label>
+                <input class="text-input" [(ngModel)]="pharmacyForm.legalName" name="legalName" placeholder="Legal name"/>
+              </div>
+              <div class="form-group">
+                <label>Display Name</label>
+                <input class="text-input" [(ngModel)]="pharmacyForm.displayName" name="displayName" placeholder="Display name"/>
+              </div>
+              <div class="form-footer inline-actions">
+                <button class="btn-cancel-inline" (click)="cancelEditPharmacy()" [disabled]="savingPharmacy()">Cancel</button>
+                <button class="btn-upload" (click)="savePharmacy()" [disabled]="savingPharmacy()">
+                  @if (savingPharmacy()) { <span class="spinner"></span> Saving… } @else { Save Changes }
+                </button>
+              </div>
+            }
+
+            @if (pharmacyNotif()) {
+              <div class="notif" [class.success]="pharmacyNotif()!.type === 'success'" [class.error]="pharmacyNotif()!.type === 'error'">
+                <i [class]="pharmacyNotif()!.type === 'success' ? 'pi pi-check-circle' : 'pi pi-exclamation-circle'"></i>
+                {{ pharmacyNotif()!.msg }}
+              </div>
+            }
+
+            <div class="danger-zone">
+              @if (!showDeletePharmacyConfirm()) {
+                <button class="btn-remove" (click)="openDeletePharmacyConfirm()">
+                  <i class="pi pi-trash"></i> Delete Pharmacy
+                </button>
+              } @else {
+                <div class="inline-confirm">
+                  <i class="pi pi-exclamation-triangle"></i>
+                  <div>
+                    <p class="inline-confirm-title">Delete this pharmacy?</p>
+                    <p class="inline-confirm-sub">This action is permanent and removes all branches under it. You will be signed out.</p>
+                  </div>
+                  <div class="inline-confirm-actions">
+                    <button class="btn-cancel-inline" (click)="closeDeletePharmacyConfirm()" [disabled]="deletingPharmacy()">Cancel</button>
+                    <button class="btn-danger-inline" (click)="confirmDeletePharmacy()" [disabled]="deletingPharmacy()">
+                      @if (deletingPharmacy()) { <span class="spinner"></span> Deleting… } @else { <i class="pi pi-trash"></i> Confirm Delete }
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="empty-state">
+              <i class="pi pi-shop"></i>
+              <p>No pharmacy information available.</p>
+            </div>
+          }
+
+          <div class="form-footer">
+            <button class="btn-new-pharmacy" (click)="applyForNewPharmacy()">
+              <i class="pi pi-plus"></i> Apply for New Pharmacy
+            </button>
+          </div>
+        </div>
+
+        <!-- ─── Pharmacy Default Branch (manager only) ─── -->
+        <div class="settings-card">
+          <h3 class="card-title">
+            <i class="pi pi-star"></i> Pharmacy Default Branch
+          </h3>
+          <p class="card-sub">Choose which branch this pharmacy's logins land on by default.</p>
+
+          @if (pharmacyBranchesLoading()) {
+            <div class="loading-state">
+              <span class="spinner-brand"></span>
+              <span>Loading branches…</span>
+            </div>
+          } @else if (pharmacyBranches().length) {
+            <div class="default-branch-list">
+              @for (b of pharmacyBranches(); track b.id) {
+                <div class="default-branch-row">
+                  <span class="default-branch-name">{{ b.branchName }}</span>
+
+                  @if (isPharmacyDefaultBranch(b)) {
+                    <span class="status-pill active"><span class="pill-dot"></span> Default</span>
+                  } @else {
+                    <button class="map-action-btn" (click)="setPharmacyDefaultBranch(b.id)" [disabled]="settingDefaultBranchId() === b.id">
+                      @if (settingDefaultBranchId() === b.id) {
+                        <span class="spinner-brand"></span>
+                      } @else {
+                        <i class="pi pi-star"></i> Set as Default
+                      }
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="empty-state">
+              <i class="pi pi-building"></i>
+              <p>No branches found for this pharmacy.</p>
+            </div>
+          }
+        </div>
+
+        <!-- ─── Current Branch Information (manager only, extended) ─── -->
+        <div class="settings-card">
+          <h3 class="card-title">
+            <i class="pi pi-building"></i> Current Branch Information
+          </h3>
+
+          @if (branchLoading()) {
+            <div class="loading-state">
+              <span class="spinner-brand"></span>
+              <span>Loading branch information…</span>
+            </div>
+          } @else if (branch(); as b) {
+
+            <div class="avatar-section">
+              <div class="avatar-wrap" [class.clickable]="branchPhotoUrl()" (click)="openPhotoPreview(branchPhotoUrl())">
+                @if (branchPhotoUrl()) {
+                  <img [src]="branchPhotoUrl()" class="avatar-img" alt="Branch photo"/>
+                  <div class="avatar-zoom-hint"><i class="pi pi-search-plus"></i></div>
+                } @else {
+                  <div class="avatar-initials">{{ initial(b.branchName) }}</div>
+                }
+              </div>
+
+              <div class="avatar-meta">
+                <h2 class="avatar-name">{{ b.branchName }}</h2>
+                <p class="avatar-username">{{ b.pharmacyName }}</p>
+
+                <div class="upload-btn-row">
+                  <button class="btn-upload" (click)="triggerBranchFileInput()" [disabled]="uploadingBranchPhoto() || deletingBranchPhoto()">
+                    @if (uploadingBranchPhoto()) {
+                      <span class="spinner"></span> Uploading…
+                    } @else {
+                      <i class="pi pi-cloud-upload"></i> Upload Photo
+                    }
+                  </button>
+
+                  @if (b.photoFileId) {
+                    <button class="btn-remove" (click)="deleteBranchPhotoAction()" [disabled]="uploadingBranchPhoto() || deletingBranchPhoto()">
+                      @if (deletingBranchPhoto()) {
+                        <span class="spinner spinner-dark"></span> Removing…
+                      } @else {
+                        <i class="pi pi-trash"></i> Remove
+                      }
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <input #branchFileInput type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="onBranchFileSelected($event)"/>
+
+            @if (!editingBranch()) {
+              <div class="info-grid">
+                <div class="info-field">
+                  <p class="field-label">Pharmacy Name</p>
+                  <p class="field-value">{{ b.pharmacyName }}</p>
+                </div>
+                <div class="info-field">
+                  <p class="field-label">Branch Name</p>
+                  <p class="field-value">{{ b.branchName }}</p>
+                </div>
+                <div class="info-field full">
+                  <p class="field-label">Address</p>
+                  <p class="field-value">{{ b.addressText }}</p>
+                </div>
+                <div class="info-field">
+                  <p class="field-label">City</p>
+                  <p class="field-value">{{ b.city }}</p>
+                </div>
+                <div class="info-field">
+                  <p class="field-label">Branch Phone</p>
+                  <p class="field-value">{{ b.phone }}</p>
+                </div>
+                <div class="info-field">
+                  <p class="field-label">Opening Hours</p>
+                  <p class="field-value">{{ b.openingHours || '—' }}</p>
+                </div>
+                <div class="info-field">
+                  <p class="field-label">Status</p>
+                  <div class="field-value">
+                    @if (b.isActive) {
+                      <span class="status-pill active"><span class="pill-dot"></span> Active</span>
+                    } @else {
+                      <span class="status-pill inactive"><span class="pill-dot"></span> Inactive</span>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-footer">
+                <button class="btn-upload" (click)="startEditBranch()"><i class="pi pi-pencil"></i> Edit Branch Info</button>
+              </div>
+            } @else {
+              <div class="form-group">
+                <label>Branch Name</label>
+                <input class="text-input" [(ngModel)]="branchForm.branchName" name="branchName" placeholder="Branch name"/>
+              </div>
+              <div class="form-group">
+                <label>Address</label>
+                <input class="text-input" [(ngModel)]="branchForm.addressText" name="addressText" placeholder="Address"/>
+              </div>
+              <div class="form-group">
+                <label>City</label>
+                <input class="text-input" [(ngModel)]="branchForm.city" name="city" placeholder="City"/>
+              </div>
+              <div class="form-group">
+                <label>Phone</label>
+                <input class="text-input" [(ngModel)]="branchForm.phone" name="phone" placeholder="Branch phone"/>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Latitude</label>
+                  <input class="text-input" type="number" [(ngModel)]="branchForm.latitude" name="latitude" placeholder="Latitude"/>
+                </div>
+                <div class="form-group">
+                  <label>Longitude</label>
+                  <input class="text-input" type="number" [(ngModel)]="branchForm.longitude" name="longitude" placeholder="Longitude"/>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <button type="button" class="map-action-btn" (click)="useCurrentLocationForBranch()" [disabled]="locatingBranch()">
+                  @if (locatingBranch()) {
+                    <span class="spinner-brand"></span> Locating…
+                  } @else {
+                    <i class="pi pi-map-marker"></i> Use Current Location
+                  }
+                </button>
+              </div>
+
+              @if (hasValidBranchFormCoord()) {
+                <div class="form-group">
+                  <label>Location Preview</label>
+                  <div class="map-wrap edit-map-wrap">
+                    <app-map [lat]="branchForm.latitude" [lng]="branchForm.longitude" [label]="branchForm.branchName || 'Branch location'"/>
+                  </div>
+                </div>
+              }
+
+              <div class="form-group">
+                <label>Opening Hours</label>
+                <input class="text-input" [(ngModel)]="branchForm.openingHours" name="openingHours" placeholder="e.g. 09:00 - 21:00"/>
+              </div>
+              <div class="form-footer inline-actions">
+                <button class="btn-cancel-inline" (click)="cancelEditBranch()" [disabled]="savingBranch()">Cancel</button>
+                <button class="btn-upload" (click)="saveBranch()" [disabled]="savingBranch()">
+                  @if (savingBranch()) { <span class="spinner"></span> Saving… } @else { Save Changes }
+                </button>
+              </div>
+            }
+
+            <div class="map-label-row">
+              <div class="map-label">
+                <i class="pi pi-map-marker" style="color: var(--color-brand-primary)"></i>
+                {{ b.branchName }} — {{ b.addressText }}
+              </div>
+              <div class="map-actions">
+                <button class="map-action-btn" (click)="openInMaps()" [disabled]="!hasValidLocation()">
+                  <i class="pi pi-external-link"></i> Open in Maps
+                </button>
+                <button class="map-action-btn" (click)="shareLocation()" [disabled]="!hasValidLocation()">
+                  <i class="pi pi-share-alt"></i> Share Location
+                </button>
+              </div>
+            </div>
+
+            @if (branchNotif()) {
+              <div class="notif" [class.success]="branchNotif()!.type === 'success'" [class.error]="branchNotif()!.type === 'error'">
+                <i [class]="branchNotif()!.type === 'success' ? 'pi pi-check-circle' : 'pi pi-exclamation-circle'"></i>
+                {{ branchNotif()!.msg }}
+              </div>
+            }
+
+            <div class="map-wrap" [class.clickable]="hasValidLocation()">
+              <app-map
+                [lat]="b.latitude"
+                [lng]="b.longitude"
+                [label]="b.branchName"
+                (locationClick)="openInMaps()"
+              />
+            </div>
+
+            <div class="danger-zone">
+              @if (!showDeleteBranchConfirm()) {
+                <button class="btn-remove" (click)="openDeleteBranchConfirm()">
+                  <i class="pi pi-trash"></i> Delete Branch
+                </button>
+              } @else {
+                <div class="inline-confirm">
+                  <i class="pi pi-exclamation-triangle"></i>
+                  <div>
+                    <p class="inline-confirm-title">Delete this branch?</p>
+                    <p class="inline-confirm-sub">This action is permanent. If other branches remain in this pharmacy you'll be switched to one of them; otherwise you'll be signed out.</p>
+                  </div>
+                  <div class="inline-confirm-actions">
+                    <button class="btn-cancel-inline" (click)="closeDeleteBranchConfirm()" [disabled]="deletingBranch()">Cancel</button>
+                    <button class="btn-danger-inline" (click)="confirmDeleteBranch()" [disabled]="deletingBranch()">
+                      @if (deletingBranch()) { <span class="spinner"></span> Deleting… } @else { <i class="pi pi-trash"></i> Confirm Delete }
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="empty-state">
+              <i class="pi pi-building"></i>
+              <p>No branch information available.</p>
+            </div>
+          }
+        </div>
+
+        <!-- ─── Add New Branch (manager only) ─── -->
+        <div class="settings-card">
+          <h3 class="card-title">
+            <i class="pi pi-plus-circle"></i> Add New Branch
+          </h3>
+
+          @if (!showAddBranch()) {
+            <button class="btn-upload" (click)="toggleAddBranch()">
+              <i class="pi pi-plus"></i> Add New Branch
+            </button>
+          } @else {
+            <div class="form-group">
+              <label>Branch Name</label>
+              <input class="text-input" [(ngModel)]="addBranchForm.branchName" name="addBranchName" placeholder="Branch name"/>
+            </div>
+            <div class="form-group">
+              <label>Address</label>
+              <input class="text-input" [(ngModel)]="addBranchForm.addressText" name="addBranchAddress" placeholder="Address"/>
+            </div>
+            <div class="form-group">
+              <label>City</label>
+              <input class="text-input" [(ngModel)]="addBranchForm.city" name="addBranchCity" placeholder="City"/>
+            </div>
+            <div class="form-group">
+              <label>Phone</label>
+              <input class="text-input" [(ngModel)]="addBranchForm.phone" name="addBranchPhone" placeholder="Branch phone"/>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Latitude</label>
+                <input class="text-input" type="number" [(ngModel)]="addBranchForm.latitude" name="addBranchLat" placeholder="Latitude"/>
+              </div>
+              <div class="form-group">
+                <label>Longitude</label>
+                <input class="text-input" type="number" [(ngModel)]="addBranchForm.longitude" name="addBranchLng" placeholder="Longitude"/>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <button type="button" class="map-action-btn" (click)="useCurrentLocationForAddBranch()" [disabled]="locatingAddBranch()">
+                @if (locatingAddBranch()) {
+                  <span class="spinner-brand"></span> Locating…
+                } @else {
+                  <i class="pi pi-map-marker"></i> Use Current Location
+                }
+              </button>
+            </div>
+
+            <div class="form-group">
+              <label>Location Preview</label>
+              <p class="field-hint">Click anywhere on the map to set the branch location.</p>
+              <div class="map-wrap edit-map-wrap">
+                <app-map
+                  [lat]="addBranchMapLat()"
+                  [lng]="addBranchMapLng()"
+                  [label]="addBranchForm.branchName || 'New branch location'"
+                  (locationClick)="onAddBranchMapClick($event)"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Opening Hours</label>
+              <input class="text-input" [(ngModel)]="addBranchForm.openingHours" name="addBranchHours" placeholder="e.g. 09:00 - 21:00"/>
+            </div>
+
+            <div class="form-group">
+              <label>Branch Photo (optional)</label>
+              <div class="upload-btn-row">
+                <button class="btn-upload" type="button" (click)="triggerAddBranchFileInput()">
+                  <i class="pi pi-cloud-upload"></i> {{ addBranchPhotoName() || 'Choose Photo' }}
+                </button>
+              </div>
+              <input #addBranchFileInput type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="onAddBranchFileSelected($event)"/>
+            </div>
+
+            @if (addBranchNotif()) {
+              <div class="notif" [class.success]="addBranchNotif()!.type === 'success'" [class.error]="addBranchNotif()!.type === 'error'">
+                <i [class]="addBranchNotif()!.type === 'success' ? 'pi pi-check-circle' : 'pi pi-exclamation-circle'"></i>
+                {{ addBranchNotif()!.msg }}
+              </div>
+            }
+
+            <div class="form-footer inline-actions">
+              <button class="btn-cancel-inline" (click)="toggleAddBranch()" [disabled]="addingBranch()">Cancel</button>
+              <button class="btn-upload" (click)="submitAddBranch()" [disabled]="addingBranch()">
+                @if (addingBranch()) { <span class="spinner"></span> Creating… } @else { Create Branch }
+              </button>
+            </div>
+          }
+        </div>
+
+      }
+
+    }
+
+    <!-- ─── SECURITY TAB ─── -->
+    @if (tab() === 'security') {
+
+      <div class="settings-card">
+        <h3 class="card-title">
+          <i class="pi pi-lock"></i> Change Password
+        </h3>
+        <p class="card-sub">After a successful change, your current session will end and you will be redirected to login.</p>
+
+        @if (pwdSuccess()) {
+          <div class="notif success">
+            <i class="pi pi-check-circle"></i>
+            {{ pwdSuccess() }}
+          </div>
+        } @else {
+          <form (ngSubmit)="changePassword()">
+            <div class="form-group">
+              <label>Current Password</label>
+              <div class="pwd-wrap">
+                <input
+                  [type]="showCurrentPwd ? 'text' : 'password'"
+                  [(ngModel)]="pwdFields.current"
+                  name="current"
+                  placeholder="Enter your current password"
+                  autocomplete="current-password"
+                />
+                <button type="button" class="pwd-toggle" (click)="showCurrentPwd = !showCurrentPwd">
+                  <i [class]="showCurrentPwd ? 'pi pi-eye-slash' : 'pi pi-eye'"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>New Password</label>
+              <div class="pwd-wrap">
+                <input
+                  [type]="showNewPwd ? 'text' : 'password'"
+                  [(ngModel)]="pwdFields.newPwd"
+                  name="newPwd"
+                  placeholder="Minimum 8 characters"
+                  autocomplete="new-password"
+                />
+                <button type="button" class="pwd-toggle" (click)="showNewPwd = !showNewPwd">
+                  <i [class]="showNewPwd ? 'pi pi-eye-slash' : 'pi pi-eye'"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Confirm New Password</label>
+              <div class="pwd-wrap">
+                <input
+                  [type]="showConfirmPwd ? 'text' : 'password'"
+                  [(ngModel)]="pwdFields.confirm"
+                  name="confirm"
+                  placeholder="Repeat new password"
+                  autocomplete="new-password"
+                />
+                <button type="button" class="pwd-toggle" (click)="showConfirmPwd = !showConfirmPwd">
+                  <i [class]="showConfirmPwd ? 'pi pi-eye-slash' : 'pi pi-eye'"></i>
+                </button>
+              </div>
+            </div>
+
+            @if (pwdError()) {
+              <div class="notif error">
+                <i class="pi pi-exclamation-circle"></i> {{ pwdError() }}
+              </div>
+            }
+
+            <div class="form-footer">
+              <button type="submit" class="btn-upload" [disabled]="changingPwd()">
+                @if (changingPwd()) {
+                  <span class="spinner"></span> Changing Password…
+                } @else {
+                  <i class="pi pi-lock"></i> Change Password
+                }
+              </button>
+            </div>
+          </form>
+        }
+      </div>
+
+    }
+
+  </div>
+</div>
+
+<!-- Shared photo lightbox (pharmacy photo / current branch photo) -->
+@if (previewPhotoUrl()) {
+  <div class="lightbox-backdrop" (click)="closePhotoPreview()">
+    <button class="lightbox-close" (click)="closePhotoPreview()" aria-label="Close preview">
+      <i class="pi pi-times"></i>
+    </button>
+    <img [src]="previewPhotoUrl()" class="lightbox-img" alt="Photo preview" (click)="$event.stopPropagation()"/>
+  </div>
+}

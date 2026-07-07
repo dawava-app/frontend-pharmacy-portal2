@@ -55,42 +55,60 @@
 
       <!-- Right actions -->
       <div class="topbar-right">
-        <!-- Branch switcher (manager & staff only) -->
-        @if (showBranchSwitcher()) {
-          <app-branch-switcher/>
+        <!-- Workspace switcher (manager/staff only, Dashboard pages only) -->
+        @if (auth.userRole() !== 'admin' && isDashboardRoute()) {
+          <app-branch-switcher />
         }
 
-        <!-- Dark mode toggle -->
-        <button class="icon-btn" (click)="toggleTheme()" [title]="theme.isDark() ? 'Light mode' : 'Dark mode'">
-          @if (theme.isDark()) {
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/><line x1="12" y1="1" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="21" x2="12" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="1" y1="12" x2="3" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="21" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          } @else {
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <!-- User / account menu -->
+        <div class="account-menu-wrap">
+          <button class="user-chip" (click)="toggleAccountMenu($event)">
+            <span class="avatar-btn" (click)="openAvatarPreview($event)">
+              @if (avatarUrl()) {
+                <img [src]="avatarUrl()" alt="Current branch photo" class="user-avatar"/>
+              } @else {
+                <div class="user-avatar initials">{{ initials() }}</div>
+              }
+            </span>
+            <div class="user-info">
+              <span class="user-name">{{ displayName() }}</span>
+              <span class="user-role">{{ roleLabel() }}</span>
+            </div>
+            <i class="pi pi-chevron-down chevron" [class.open]="showAccountMenu()"></i>
+          </button>
+
+          @if (showAccountMenu()) {
+            <div class="account-dropdown" (click)="$event.stopPropagation()">
+              @if (auth.userRole() !== 'admin') {
+                <button class="dropdown-item" (click)="goToSettings()">
+                  <i class="pi pi-cog"></i>
+                  <span>Account Settings</span>
+                </button>
+              }
+              <button class="dropdown-item" (click)="toggleTheme()">
+                <i [class]="theme.isDark() ? 'pi pi-sun' : 'pi pi-moon'"></i>
+                <span>{{ theme.isDark() ? 'Light Theme' : 'Dark Theme' }}</span>
+              </button>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item danger" (click)="logout()">
+                <i class="pi pi-sign-out"></i>
+                <span>Logout</span>
+              </button>
+            </div>
           }
-        </button>
-
-        <!-- Notifications -->
-        <button class="icon-btn notif-btn">
-          <i class="pi pi-bell"></i>
-          <span class="notif-dot"></span>
-        </button>
-
-        <div class="divider"></div>
-
-        <!-- User -->
-        <div class="user-chip">
-          @if (avatarUrl()) {
-            <img [src]="avatarUrl()" [alt]="user?.fullName" class="user-avatar"/>
-          } @else {
-            <div class="user-avatar initials">{{ initials() }}</div>
-          }
-          <div class="user-info">
-            <span class="user-name">{{ user?.fullName || 'User' }}</span>
-            <span class="user-role">{{ roleLabel() }}</span>
-          </div>
         </div>
       </div>
     </header>
+
+    <!-- Avatar preview (lightbox) -->
+    @if (showAvatarPreview() && avatarUrl()) {
+      <div class="lightbox-backdrop" (click)="closeAvatarPreview()">
+        <button class="lightbox-close" (click)="closeAvatarPreview()" aria-label="Close preview">
+          <i class="pi pi-times"></i>
+        </button>
+        <img [src]="avatarUrl()" class="lightbox-img" alt="Current branch photo" (click)="$event.stopPropagation()"/>
+      </div>
+    }
 
     <!-- Page content -->
     <main class="page-content">

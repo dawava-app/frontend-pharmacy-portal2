@@ -14,6 +14,7 @@ export class ChatSocketService {
   readonly messageDeleted$     = new Subject<{ messageId: string; conversationId: string; deletedAt: string }>();
   readonly messageRead$        = new Subject<{ messageId: string; conversationId: string; userId: string; readAt: string }>();
   readonly typing$             = new Subject<{ conversationId: string; userId: string; isActive: boolean }>();
+  readonly recording$          = new Subject<{ conversationId: string; userId: string; type?: string; isActive: boolean; timestamp?: string }>();
   readonly presence$           = new Subject<{ userId: string; status: PresenceState; conversationId?: string }>();
   readonly conversationRead$   = new Subject<{ conversationId: string; userId: string; count: number }>();
   readonly conversationNew$    = new Subject<Conversation>();
@@ -47,6 +48,7 @@ export class ChatSocketService {
     this.socket.on('message:deleted',     (m: { messageId: string; conversationId: string; deletedAt: string }) => this.messageDeleted$.next(m));
     this.socket.on('message:read',        (r: { messageId: string; conversationId: string; userId: string; readAt: string }) => this.messageRead$.next(r));
     this.socket.on('user:typing',         (t: { conversationId: string; userId: string; isActive: boolean }) => this.typing$.next(t));
+    this.socket.on('user:recording',      (r: { conversationId: string; userId: string; type?: string; isActive: boolean; timestamp?: string }) => this.recording$.next(r));
     this.socket.on('user:online',         (p: { userId: string; conversationId?: string }) => this.presence$.next({ ...p, status: 'online' }));
     this.socket.on('user:offline',        (p: { userId: string; conversationId?: string }) => this.presence$.next({ ...p, status: 'offline' }));
     this.socket.on('conversation:read',   (r: { conversationId: string; userId: string; count: number }) => this.conversationRead$.next(r));
@@ -60,6 +62,8 @@ export class ChatSocketService {
   leaveRoom(conversationId: string): void   { this.socket?.emit('room:leave',      { conversationId }); }
   startTyping(conversationId: string): void { this.socket?.emit('typing:start',    { conversationId }); }
   stopTyping(conversationId: string): void  { this.socket?.emit('typing:stop',     { conversationId }); }
+  startRecording(conversationId: string): void { this.socket?.emit('recording:start', { conversationId }); }
+  stopRecording(conversationId: string): void  { this.socket?.emit('recording:stop',  { conversationId }); }
   ping(): void                              { this.socket?.emit('activity:ping',   {}); }
 
   markMessageRead(messageId: string): void {

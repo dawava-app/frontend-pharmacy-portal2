@@ -25,8 +25,33 @@ export class AuthService {
   readonly userRole           = signal<UserRole | null>(null);
   readonly availableScopes    = signal<Scope[]>([]);
   readonly currentBranchId    = signal<string | null>(null);
+  readonly currentPharmacyId  = signal<string | null>(null);
   readonly hasDashboardAccess = signal<boolean>(true);
   readonly permissions        = signal<unknown[]>([]);
+
+  /** The branch_id encoded in the access token issued immediately after login —
+   *  i.e. the backend's chosen default workspace. Persisted so it survives
+   *  page reloads (session restore uses /auth/refresh, which doesn't re-assert
+   *  a default). Updated only by login() and setDefaultBranch(), never by
+   *  switchBranch()/refreshToken(), since switching branches must not change
+   *  what the user has designated as their default. */
+  readonly defaultBranchId = signal<string | null>(this.tokens.getDefaultBranchId());
+
+  /** Decode branch_id/pharmacy_id from the just-stored access token — the token
+   *  is always the source of truth for the active workspace. Falls back to the
+   *  response's scope.branch_id if the token can't be decoded, so behavior for
+   *  existing flows is unchanged. */
+  private setWorkspaceFromToken(token: string, fallbackBranchId?: string | null): void {
+    try {
+      const claims = jwtDecode<Record<string, unknown>>(token);
+      const branchId   = (claims['branch_id'] as string | undefined)   ?? fallbackBranchId ?? null;
+      const pharmacyId = (claims['pharmacy_id'] as string | undefined) ?? null;
+      this.currentBranchId.set(branchId);
+      this.currentPharmacyId.set(pharmacyId);
+    } catch {
+      this.currentBranchId.set(fallbackBranchId ?? null);
+    }
+  }
 
   /* ── Login ── */
   login(body: LoginRequest): Observable<LoginResponse> {
@@ -36,7 +61,15 @@ export class AuthService {
         this.tokens.setRefreshToken(res.refresh_token);
         this.hasDashboardAccess.set(res.has_dashboard_access ?? true);
         this.availableScopes.set(res.available_scopes ?? []);
-        this.currentBranchId.set(res.scope?.branch_id ?? null);
+        this.setWorkspaceFromToken(res.access_token, res.scope?.branch_id);
+
+        // The access token issued right here, at login, encodes the backend's
+        // default workspace — capture it before any subsequent branch switch.
+        const defaultId = this.currentBranchId();
+        if (defaultId) {
+          this.defaultBranchId.set(defaultId);
+          this.tokens.setDefaultBranchId(defaultId);
+        }
       })
     );
   }
@@ -50,7 +83,7 @@ export class AuthService {
         this.tokens.setRefreshToken(res.refresh_token);
         this.hasDashboardAccess.set(res.has_dashboard_access ?? true);
         if (res.available_scopes) this.availableScopes.set(res.available_scopes);
-        if (res.scope?.branch_id) this.currentBranchId.set(res.scope.branch_id);
+        this.setWorkspaceFromToken(res.access_token, res.scope?.branch_id);
       })
     );
   }
@@ -166,10 +199,21 @@ export class AuthService {
         this.tokens.setAccessToken(res.access_token);
         this.tokens.setRefreshToken(res.refresh_token);
         this.hasDashboardAccess.set(res.has_dashboard_access ?? true);
-        this.currentBranchId.set(res.scope?.branch_id ?? branchId);
+        this.setWorkspaceFromToken(res.access_token, res.scope?.branch_id ?? branchId);
         if (res.available_scopes) this.availableScopes.set(res.available_scopes);
       }),
       switchMap(() => this.fetchMe())
+    );
+  }
+
+  /** Set which branch the user lands on for future logins. Does not switch
+   *  the currently active workspace and does not issue new tokens. */
+  setDefaultBranch(branchId: string): Observable<unknown> {
+    return this.http.put(`${this.BASE}/auth/default-branch`, { branch_id: branchId }).pipe(
+      tap(() => {
+        this.defaultBranchId.set(branchId);
+        this.tokens.setDefaultBranchId(branchId);
+      })
     );
   }
 
@@ -186,12 +230,20 @@ export class AuthService {
     }
   }
 
+  /** Clear local auth state and redirect to login without calling the logout API.
+   *  Use this when the server-side session is already invalidated (e.g. after revoking a session). */
+  clearSession(): void {
+    this.clearAndRedirect();
+  }
+
   private clearAndRedirect(): void {
     this.tokens.clearAll();
     this.currentUser.set(null);
     this.userRole.set(null);
     this.availableScopes.set([]);
     this.currentBranchId.set(null);
+    this.currentPharmacyId.set(null);
+    this.defaultBranchId.set(null);
     this.permissions.set([]);
     this.router.navigate(['/login']);
   }

@@ -1,13 +1,16 @@
 <!-- Header -->
 <div class="page-header">
-  <div class="breadcrumb">
-    <span>{{ branchLabel() }}</span>
-    <span class="sep">•</span>
-    <span class="active">MANAGER DASHBOARD</span>
+  <div>
+    <div class="breadcrumb">
+      @if (pharmacyName()) {
+        <span>{{ pharmacyName() }}</span>
+        <span class="sep">•</span>
+      }
+      <span>{{ branchLabel() }}</span>
+      <span class="sep">•</span>
+      <span class="active">MANAGER DASHBOARD</span>
+    </div>
   </div>
-  <button class="btn-new-pharmacy" (click)="applyForNewPharmacy()">
-    <i class="pi pi-plus"></i> Apply for New Pharmacy
-  </button>
 </div>
 
 <!-- Analytics cards -->
@@ -128,11 +131,11 @@
       <a href="#" class="view-all">{{ branchLabel() }} <i class="pi pi-chevron-right"></i></a>
     </div>
     <div class="map-container">
-      <app-map [lat]="branchLat" [lng]="branchLng" [label]="branchLabel()"/>
+      <app-map [lat]="branchLat()" [lng]="branchLng()" [label]="branchLabel()"/>
     </div>
     <p class="location-addr">
       <i class="pi pi-map-marker" style="color:var(--color-brand-primary)"></i>
-      {{ branchLabel() }}
+      {{ branchAddress() || branchLabel() }}
     </p>
   </div>
 </div>
@@ -146,35 +149,37 @@
     </div>
     <button class="btn-brand-sm">Restock All</button>
   </div>
-  <table class="stock-table">
-    <thead>
-      <tr>
-        <th>MEDICINE NAME</th>
-        <th>CURRENT STOCK</th>
-        <th>MIN. THRESHOLD</th>
-        <th>STATUS</th>
-        <th>ACTIONS</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (row of lowStock; track row.name) {
+  <div class="table-scroll">
+    <table class="stock-table">
+      <thead>
         <tr>
-          <td class="med-cell">
-            <i class="pi pi-heart-fill" style="color:var(--color-text-muted)"></i>
-            {{ row.name }}
-          </td>
-          <td>{{ row.current }} Units</td>
-          <td>{{ row.min }} Units</td>
-          <td>
-            <span class="status-badge"
-              [class.badge-danger]="row.cls === 'danger'"
-              [class.badge-pending]="row.cls === 'warning'">
-              {{ row.status }}
-            </span>
-          </td>
-          <td><button class="btn-restock">Restock</button></td>
+          <th>MEDICINE NAME</th>
+          <th>CURRENT STOCK</th>
+          <th>MIN. THRESHOLD</th>
+          <th>STATUS</th>
+          <th>ACTIONS</th>
         </tr>
-      }
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        @for (row of lowStock; track row.name) {
+          <tr>
+            <td class="med-cell">
+              <i class="pi pi-heart-fill" style="color:var(--color-text-muted)"></i>
+              {{ row.name }}
+            </td>
+            <td>{{ row.current }} Units</td>
+            <td>{{ row.min }} Units</td>
+            <td>
+              <span class="status-badge"
+                [class.badge-danger]="row.cls === 'danger'"
+                [class.badge-pending]="row.cls === 'warning'">
+                {{ row.status }}
+              </span>
+            </td>
+            <td><button class="btn-restock">Restock</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
 </div>

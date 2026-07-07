@@ -1,0 +1,177 @@
+<!-- Page Header -->
+<div class="page-header">
+  <button class="btn-back" (click)="goBack()">
+    <i class="pi pi-arrow-left"></i>
+    Back to Settings
+  </button>
+  <div class="header-center">
+    <div class="breadcrumb">
+      <span>Settings</span>
+      <i class="pi pi-chevron-right"></i>
+      <span class="active">Sessions &amp; Devices</span>
+    </div>
+    <h1 class="page-title">Active Sessions</h1>
+    <p class="page-sub">Manage where you're signed in. Unrecognised devices? Log them out immediately.</p>
+  </div>
+</div>
+
+<!-- Loading state -->
+@if (loading()) {
+  <div class="loading-card">
+    <span class="spinner-brand"></span>
+    <span>Loading sessions…</span>
+  </div>
+}
+
+<!-- Error state -->
+@if (!loading() && error()) {
+  <div class="error-card">
+    <i class="pi pi-exclamation-circle"></i>
+    <div>
+      <p>{{ error() }}</p>
+      <button class="btn-retry" (click)="refresh()">Try again</button>
+    </div>
+  </div>
+}
+
+<!-- Sessions list -->
+@if (!loading() && !error()) {
+  <div class="sessions-count">
+    <span class="count-badge">{{ sessions().length }}</span>
+    {{ sessions().length === 1 ? 'active session' : 'active sessions' }}
+  </div>
+
+  <div class="sessions-list">
+    @for (session of sessions(); track session.jti) {
+      <div class="session-card" [class.is-current]="session.is_current">
+        <!-- Top row: browser icon + device info + current badge -->
+        <div class="session-top">
+          <div class="browser-icon" [class]="'bi-' + session.browserIcon">
+            <span class="browser-letter">{{ session.browserName.charAt(0) }}</span>
+          </div>
+
+          <div class="session-info">
+            <div class="session-primary">
+              <span class="browser-name">{{ session.browserName }}</span>
+              <span class="sep">·</span>
+              <i [class]="session.deviceIcon" class="device-icon"></i>
+              <span class="device-name">{{ session.deviceType }}</span>
+              <span class="sep">·</span>
+              <span class="os-name">{{ session.osName }}</span>
+            </div>
+
+            <div class="session-meta-row">
+              <span class="meta-item">
+                <i class="pi pi-map-marker"></i>
+                {{ session.ip_address }}
+              </span>
+              <span class="meta-sep">·</span>
+              <span class="meta-item">
+                <i class="pi pi-clock"></i>
+                Last active: {{ timeAgo(session.last_active_at_unix) }}
+              </span>
+              <span class="meta-sep">·</span>
+              <span class="meta-item">
+                <i class="pi pi-sign-in"></i>
+                Signed in: {{ toDate(session.issued_at_unix) | date:'MMM d, y · h:mm a' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="session-right">
+            @if (session.is_current) {
+              <div class="current-badge">
+                <span class="current-dot"></span>
+                Current Session
+              </div>
+            }
+            <button
+              class="btn-logout-session"
+              [class.btn-logout-current]="session.is_current"
+              (click)="revokeSession(session.family_id, session.is_current)"
+              [disabled]="revoking() === session.family_id"
+            >
+              @if (revoking() === session.family_id) {
+                <span class="spinner"></span>
+                Logging out…
+              } @else {
+                <i class="pi pi-sign-out"></i>
+                Logout
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (sessions().length === 0) {
+      <div class="empty-sessions">
+        <i class="pi pi-desktop"></i>
+        <p>No active sessions found.</p>
+      </div>
+    }
+  </div>
+
+  <!-- Logout all -->
+  <div class="logout-all-wrap">
+    <div class="logout-all-info">
+      <i class="pi pi-shield"></i>
+      <span>If you notice unfamiliar devices, secure your account by logging out from everywhere.</span>
+    </div>
+    <button class="btn-logout-all" (click)="openDialog()">
+      <i class="pi pi-power-off"></i>
+      Logout From All Devices
+    </button>
+  </div>
+}
+
+<!-- Logout All Dialog -->
+@if (showDialog()) {
+  <div class="dialog-backdrop" (click)="closeDialog()">
+    <div class="dialog-box" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <div class="dialog-icon">
+          <i class="pi pi-exclamation-triangle"></i>
+        </div>
+        <div>
+          <h3 class="dialog-title">Logout All Sessions</h3>
+          <p class="dialog-sub">You will be signed out of all devices. Enter your current password to confirm.</p>
+        </div>
+        <button class="dialog-close" (click)="closeDialog()">
+          <i class="pi pi-times"></i>
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label>Current Password</label>
+        <input
+          type="password"
+          [(ngModel)]="logoutAllPwd"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+          (keyup.enter)="confirmLogoutAll()"
+        />
+      </div>
+
+      @if (logoutAllError()) {
+        <div class="dialog-error">
+          <i class="pi pi-exclamation-circle"></i>
+          {{ logoutAllError() }}
+        </div>
+      }
+
+      <div class="dialog-actions">
+        <button class="btn-cancel" (click)="closeDialog()" [disabled]="logoutAllLoading()">
+          Cancel
+        </button>
+        <button class="btn-danger" (click)="confirmLogoutAll()" [disabled]="logoutAllLoading()">
+          @if (logoutAllLoading()) {
+            <span class="spinner"></span> Processing…
+          } @else {
+            <i class="pi pi-power-off"></i> Logout All
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}

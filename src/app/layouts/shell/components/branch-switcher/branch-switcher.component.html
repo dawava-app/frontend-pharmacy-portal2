@@ -1,48 +1,117 @@
-@if (hasMultipleBranches() || availableScopes().length === 1) {
-  <div class="branch-switcher" [class.is-open]="isOpen()">
+<div class="workspace-switcher" [class.is-open]="isOpen()">
 
-    <button
-      class="branch-btn"
-      (click)="toggle()"
-      [disabled]="switching() || !hasMultipleBranches()"
-      [class.single]="!hasMultipleBranches()"
-    >
-      <i class="pi pi-building branch-icon"></i>
-
-      @if (switching()) {
-        <span class="switch-spinner"></span>
-        <span class="branch-label">Switching…</span>
-      } @else {
-        <span class="branch-label">{{ currentBranchLabel() }}</span>
-        @if (hasMultipleBranches()) {
-          <i class="pi pi-chevron-down chevron"></i>
+  <button
+    class="workspace-btn"
+    (click)="toggle()"
+    [disabled]="switching() || !hasMultipleBranches()"
+    [class.single]="!hasMultipleBranches()"
+    [attr.aria-expanded]="isOpen()"
+    [attr.aria-haspopup]="hasMultipleBranches() ? 'menu' : null"
+  >
+    @if (switching()) {
+      <span class="switch-spinner"></span>
+      <span class="workspace-label">
+        <span class="pharmacy-line">Switching…</span>
+      </span>
+    } @else {
+      <span class="workspace-avatar">
+        @if (branchPhotoUrl()) {
+          <img [src]="branchPhotoUrl()" alt="Current branch photo" class="workspace-avatar-img"/>
+        } @else {
+          {{ initial(pharmacyName()) }}
         }
+      </span>
+      <span class="workspace-label">
+        <span class="pharmacy-line">{{ pharmacyName() }}</span>
+        <span class="branch-line">
+          <i class="pi pi-map-marker"></i>
+          <span class="branch-name">{{ branchName() }}</span>
+        </span>
+      </span>
+      @if (hasMultipleBranches()) {
+        <i class="pi pi-chevron-down chevron"></i>
       }
-    </button>
-
-    @if (isOpen()) {
-      <!-- backdrop to close dropdown on outside click -->
-      <div class="dropdown-backdrop" (click)="close()"></div>
-
-      <div class="branch-dropdown" role="listbox">
-        <p class="dropdown-header">Switch Branch</p>
-        @for (scope of availableScopes(); track scope.branch_id; let i = $index) {
-          <button
-            class="branch-option"
-            role="option"
-            [class.active]="scope.branch_id === currentBranchId()"
-            (click)="switchTo(scope.branch_id)"
-          >
-            <div class="option-icon">
-              <i class="pi pi-building"></i>
-            </div>
-            <span class="option-label">{{ labelFor(scope, i) }}</span>
-            @if (scope.branch_id === currentBranchId()) {
-              <i class="pi pi-check check-icon"></i>
-            }
-          </button>
-        }
-      </div>
     }
-  </div>
-}
+  </button>
+
+  @if (isOpen()) {
+    <!-- backdrop to close dropdown on outside click -->
+    <div class="dropdown-backdrop" (click)="close()"></div>
+
+    <div class="workspace-dropdown" role="menu" (keydown)="onOptionKeydown($event)">
+      <p class="dropdown-header">Switch Workspace</p>
+
+      @if (loadingDetails()) {
+        <div class="dropdown-loading">
+          <span class="skeleton-row"></span>
+          <span class="skeleton-row"></span>
+          <span class="skeleton-row short"></span>
+        </div>
+      } @else {
+        <div class="dropdown-scroll">
+          @for (group of groupedWorkspaces(); track group.pharmacyId; let last = $last) {
+            <p class="pharmacy-header">
+              <span class="pharmacy-avatar">{{ initial(group.pharmacyName) }}</span>
+              <span>{{ group.pharmacyName }}</span>
+            </p>
+
+            @for (branch of group.branches; track branch.id) {
+              <div class="branch-card" [class.active]="branch.isCurrent">
+                <button
+                  class="branch-option"
+                  role="menuitem"
+                  [class.active]="branch.isCurrent"
+                  [disabled]="switching()"
+                  (click)="switchTo(branch.id)"
+                >
+                  <span class="branch-avatar">{{ initial(branch.branchName) }}</span>
+
+                  <span class="branch-text">
+                    <span class="branch-title-row">
+                      <span class="option-label">{{ branch.branchName }}</span>
+                      @if (branch.isCurrent) {
+                        <span class="active-badge">Active</span>
+                      }
+                    </span>
+                    <span class="branch-sub">Branch</span>
+                  </span>
+
+                  @if (branch.isCurrent) {
+                    <span class="check-badge"><i class="pi pi-check"></i></span>
+                  } @else if (switching()) {
+                    <span class="switch-spinner small"></span>
+                  }
+                </button>
+
+                @if (!isDefaultBranch(branch.id) && !isManager()) {
+                  <button
+                    class="make-default-btn"
+                    type="button"
+                    [disabled]="makingDefault() === branch.id"
+                    [attr.aria-label]="'Make ' + branch.branchName + ' the default branch'"
+                    title="Make default branch"
+                    (click)="makeDefault($event, branch.id)"
+                  >
+                    @if (makingDefault() === branch.id) {
+                      <span class="switch-spinner small"></span>
+                    } @else {
+                      <i class="pi pi-star"></i>
+                    }
+                  </button>
+                }
+              </div>
+            }
+
+            @if (!last) {
+              <div class="dropdown-divider"></div>
+            }
+          }
+        </div>
+      }
+
+      @if (error()) {
+        <p class="dropdown-error">{{ error() }}</p>
+      }
+    </div>
+  }
+</div>

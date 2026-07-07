@@ -131,4 +131,6 @@
 @media (max-width: 540px) {
   .status-card { padding: 32px 20px; }
   .status-title { font-size: 1.4rem; }
+  .actions      { flex-direction: column; }
+  .btn          { justify-content: center; }
 }

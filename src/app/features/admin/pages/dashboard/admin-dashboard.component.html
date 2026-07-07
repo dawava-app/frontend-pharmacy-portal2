@@ -42,40 +42,42 @@
       <h4>Pharmacy Branches</h4>
       <button class="btn-ghost-sm"><i class="pi pi-eye"></i> View All</button>
     </div>
-    <table class="branch-table">
-      <thead>
-        <tr>
-          <th>BRANCH</th>
-          <th>STATUS</th>
-          <th>STAFF</th>
-          <th>MONTHLY REVENUE</th>
-          <th>ACTIONS</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (b of branches; track b.name) {
+    <div class="table-scroll">
+      <table class="branch-table">
+        <thead>
           <tr>
-            <td class="branch-name">
-              <div class="branch-dot" [class.active-dot]="b.status === 'Active'"></div>
-              {{ b.name }}
-            </td>
-            <td>
-              <span class="status-badge"
-                [class.badge-success]="b.status === 'Active'"
-                [class.badge-danger]="b.status === 'Inactive'">
-                {{ b.status }}
-              </span>
-            </td>
-            <td>{{ b.staff }}</td>
-            <td>{{ b.revenue }}</td>
-            <td>
-              <button class="btn-icon"><i class="pi pi-pencil"></i></button>
-              <button class="btn-icon"><i class="pi pi-eye"></i></button>
-            </td>
+            <th>BRANCH</th>
+            <th>STATUS</th>
+            <th>STAFF</th>
+            <th>MONTHLY REVENUE</th>
+            <th>ACTIONS</th>
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (b of branches; track b.name) {
+            <tr>
+              <td class="branch-name">
+                <div class="branch-dot" [class.active-dot]="b.status === 'Active'"></div>
+                {{ b.name }}
+              </td>
+              <td>
+                <span class="status-badge"
+                  [class.badge-success]="b.status === 'Active'"
+                  [class.badge-danger]="b.status === 'Inactive'">
+                  {{ b.status }}
+                </span>
+              </td>
+              <td>{{ b.staff }}</td>
+              <td>{{ b.revenue }}</td>
+              <td>
+                <button class="btn-icon"><i class="pi pi-pencil"></i></button>
+                <button class="btn-icon"><i class="pi pi-eye"></i></button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Recent activity -->

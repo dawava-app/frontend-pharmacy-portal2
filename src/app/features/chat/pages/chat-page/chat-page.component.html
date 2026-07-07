@@ -1,9 +1,20 @@
-<div class="chat-wrap">
+<div class="chat-wrap" [class.sidebar-collapsed]="sidebarCollapsed()">
+
+  <!-- Sidebar collapse/expand toggle -->
+  <button
+    type="button"
+    class="sidebar-collapse-toggle"
+    (click)="toggleSidebarCollapsed()"
+    [attr.aria-expanded]="!sidebarCollapsed()"
+    [title]="sidebarCollapsed() ? 'Show conversations' : 'Hide conversations'"
+  >
+    <i class="pi" [class.pi-angle-left]="!sidebarCollapsed()" [class.pi-angle-right]="sidebarCollapsed()"></i>
+  </button>
 
   <!-- ══════════════════════════════════════════════════════════
        LEFT — Conversation list
   ══════════════════════════════════════════════════════════ -->
-  <aside class="chat-sidebar" [class.slide-out]="selectedConversation()">
+  <aside class="chat-sidebar" [class.collapsed]="sidebarCollapsed()" [class.slide-out]="selectedConversation()">
 
     <div class="sidebar-head">
       <h2 class="sidebar-title">
@@ -49,7 +60,16 @@
               (click)="selectConversation(conv)"
             >
               <div class="conv-avatar">
-                <span class="avatar-text">{{ getConvInitials(conv) }}</span>
+                @if (getConvAvatarUrl(conv); as convAvatarUrl) {
+                  <img
+                    [src]="convAvatarUrl"
+                    class="avatar-img"
+                    alt="Profile photo"
+                    (error)="onConvAvatarError(conv)"
+                  />
+                } @else {
+                  <span class="avatar-text">{{ getConvInitials(conv) }}</span>
+                }
                 <span class="presence-dot" [class]="'presence-' + getPresenceStatus(conv)"></span>
               </div>
               <div class="conv-body">
@@ -126,7 +146,17 @@
         </button>
 
         <div class="thread-avatar">
-          <span class="avatar-text sm">{{ getConvInitials(selectedConversation()!) }}</span>
+          @if (getSelectedConvAvatarUrl(); as avatarUrl) {
+            <img
+              [src]="avatarUrl"
+              class="avatar-img sm"
+              alt="Profile photo"
+              (click)="openImagePreview(avatarUrl, $event)"
+              (error)="onThreadAvatarError()"
+            />
+          } @else {
+            <span class="avatar-text sm">{{ getConvInitials(selectedConversation()!) }}</span>
+          }
           <span class="presence-dot sm" [class]="'presence-' + getPresenceStatus(selectedConversation()!)"></span>
         </div>
 
@@ -165,7 +195,7 @@
           </div>
         }
 
-        @for (msg of visibleMessages(); track msg._id; let i = $index) {
+        @for (msg of messages(); track msg._id; let i = $index) {
 
           @if (shouldShowDateSeparator(msg, i)) {
             <div class="date-sep">
@@ -206,12 +236,6 @@
                     @if (isOwnMessage(msg) && !isDeletedMsg(msg)) {
                       <button class="action-item" (click)="startEdit(msg)">
                         <i class="pi pi-pencil"></i> Edit
-                      </button>
-                    }
-                    <!-- Delete for me: available on any message -->
-                    @if (!isDeletedMsg(msg)) {
-                      <button class="action-item" (click)="deleteForMe(msg)">
-                        <i class="pi pi-eye-slash"></i> Delete for me
                       </button>
                     }
                     <!-- Delete for everyone: only on own messages -->
@@ -276,17 +300,66 @@
                     @if (msg.attachments && msg.attachments.length > 0 && !isDeletedMsg(msg)) {
                       <div class="attachments">
                         @for (att of msg.attachments; track att.externalFileId) {
-                          <button
-                            type="button"
-                            class="attachment-chip"
-                            [class.att-own]="isOwnMessage(msg)"
-                            (click)="openAttachment(att.externalFileId); $event.stopPropagation()"
-                            title="Open file"
-                          >
-                            <i class="pi pi-paperclip"></i>
-                            <span class="att-label">{{ att.label || 'Attachment' }}</span>
-                            <i class="pi pi-external-link att-icon-right"></i>
-                          </button>
+                          @switch (attachmentKind(att)) {
+
+                            @case ('image') {
+                              <button
+                                type="button"
+                                class="attachment-image-wrap"
+                                (click)="openImagePreview(getAttachmentUrl(att), $event)"
+                                title="View image"
+                              >
+                                @if (getAttachmentUrl(att); as imgUrl) {
+                                  <img [src]="imgUrl" class="attachment-image" [alt]="att.label || 'Image'" />
+                                } @else {
+                                  <div class="attachment-image-loading"><i class="pi pi-spin pi-spinner"></i></div>
+                                }
+                              </button>
+                            }
+
+                            @case ('audio') {
+                              <div class="voice-player" [class.own]="isOwnMessage(msg)" (click)="$event.stopPropagation()">
+                                <audio
+                                  #audioEl
+                                  style="display:none"
+                                  (play)="onAudioPlay(att.externalFileId)"
+                                  (pause)="onAudioPause(att.externalFileId)"
+                                  (ended)="onAudioEnded(att.externalFileId)"
+                                  (timeupdate)="onAudioTimeUpdate(att.externalFileId, audioEl)"
+                                  (loadedmetadata)="onAudioLoadedMetadata(att.externalFileId, audioEl)"
+                                ></audio>
+                                <button
+                                  type="button"
+                                  class="voice-play-btn"
+                                  (click)="toggleAudioPlayback(att, audioEl)"
+                                  [title]="playingAudioId() === att.externalFileId ? 'Pause' : 'Play'"
+                                >
+                                  <i class="pi" [class.pi-play]="playingAudioId() !== att.externalFileId" [class.pi-pause]="playingAudioId() === att.externalFileId"></i>
+                                </button>
+                                <div class="voice-progress" #barEl (click)="seekAudio(att, audioEl, barEl, $event)">
+                                  <div class="voice-progress-fill" [style.width.%]="getAudioProgress(att)"></div>
+                                </div>
+                                <span class="voice-duration">
+                                  {{ formatDuration(getAudioDisplayTime(att)) }}
+                                </span>
+                              </div>
+                            }
+
+                            @default {
+                              <button
+                                type="button"
+                                class="attachment-chip"
+                                [class.att-own]="isOwnMessage(msg)"
+                                (click)="openAttachment(att.externalFileId); $event.stopPropagation()"
+                                title="Open file"
+                              >
+                                <i class="pi pi-paperclip"></i>
+                                <span class="att-label">{{ att.label || 'Attachment' }}</span>
+                                <i class="pi pi-external-link att-icon-right"></i>
+                              </button>
+                            }
+
+                          }
                         }
                       </div>
                     }
@@ -439,6 +512,13 @@
           </div>
         }
 
+        @if (recordingUserIds().length > 0) {
+          <div class="typing-indicator recording">
+            <i class="pi pi-microphone recording-indicator-icon"></i>
+            <span class="typing-label">Recording a voice message…</span>
+          </div>
+        }
+
       </div>
 
       <!-- Input footer -->
@@ -463,65 +543,100 @@
         }
 
         <!-- Pending attachment preview -->
-        @if (pendingAttachment()) {
-          <div class="attachment-preview">
-            <i class="pi pi-file"></i>
-            <span class="att-prev-label">{{ pendingAttachment()!.label }}</span>
-            <button type="button" class="att-prev-close" (click)="clearAttachment()" title="Remove attachment">
-              <i class="pi pi-times"></i>
+        @if (pendingAttachment(); as pending) {
+          @if (pending.kind === 'image' && pending.previewUrl) {
+            <div class="attachment-preview-image-wrap">
+              <img [src]="pending.previewUrl" class="attachment-preview-image" alt="Selected image" />
+              <button type="button" class="att-prev-remove" (click)="clearAttachment()" title="Remove image">
+                <i class="pi pi-times"></i>
+              </button>
+            </div>
+          } @else {
+            <div class="attachment-preview">
+              <i class="pi pi-file"></i>
+              <span class="att-prev-label">{{ pending.label }}</span>
+              <button type="button" class="att-prev-close" (click)="clearAttachment()" title="Remove attachment">
+                <i class="pi pi-times"></i>
+              </button>
+            </div>
+          }
+        }
+
+        @if (!isRecording()) {
+          <div class="input-row">
+
+            <!-- File attach button -->
+            <button
+              type="button"
+              class="attach-btn"
+              (click)="triggerFileInput()"
+              [disabled]="uploadingFile() || sending()"
+              title="Attach file"
+            >
+              @if (uploadingFile()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              } @else {
+                <i class="pi pi-paperclip"></i>
+              }
+            </button>
+
+            <!-- Hidden file input -->
+            <input
+              #fileInput
+              type="file"
+              style="display:none"
+              (change)="handleFileSelect($event)"
+            />
+
+            <input
+              type="text"
+              class="msg-input"
+              placeholder="Type a message…"
+              [(ngModel)]="messageText"
+              (input)="onTyping()"
+              (keydown.enter)="sendMessage()"
+              (blur)="stopTypingIfIdle()"
+              [disabled]="sending()"
+              autocomplete="off"
+            />
+
+            <!-- Voice message button -->
+            <button
+              type="button"
+              class="mic-btn"
+              (click)="startRecording()"
+              [disabled]="uploadingFile() || sending()"
+              title="Record voice message"
+            >
+              <i class="pi pi-microphone"></i>
+            </button>
+
+            <button
+              class="send-btn"
+              [disabled]="(!messageText.trim() && !pendingAttachment()) || sending()"
+              (click)="sendMessage()"
+              title="Send"
+            >
+              @if (sending()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              } @else {
+                <i class="pi pi-send"></i>
+              }
+            </button>
+          </div>
+        } @else {
+          <div class="recording-bar">
+            <button type="button" class="recording-cancel-btn" (click)="cancelRecording()" title="Cancel recording">
+              <i class="pi pi-trash"></i>
+            </button>
+            <span class="recording-dot"></span>
+            <span class="recording-time">{{ formatDuration(recordingSeconds()) }}</span>
+            <span class="recording-label">Recording…</span>
+            <button type="button" class="recording-send-btn" (click)="sendRecording()" title="Send voice message">
+              <i class="pi pi-send"></i>
             </button>
           </div>
         }
-
-        <div class="input-row">
-
-          <!-- File attach button -->
-          <button
-            type="button"
-            class="attach-btn"
-            (click)="triggerFileInput()"
-            [disabled]="uploadingFile() || sending()"
-            title="Attach file"
-          >
-            @if (uploadingFile()) {
-              <i class="pi pi-spin pi-spinner"></i>
-            } @else {
-              <i class="pi pi-paperclip"></i>
-            }
-          </button>
-
-          <!-- Hidden file input -->
-          <input
-            #fileInput
-            type="file"
-            style="display:none"
-            (change)="handleFileSelect($event)"
-          />
-
-          <input
-            type="text"
-            class="msg-input"
-            placeholder="Type a message…"
-            [(ngModel)]="messageText"
-            (input)="onTyping()"
-            (keydown.enter)="sendMessage()"
-            (blur)="stopTypingIfIdle()"
-            [disabled]="sending()"
-            autocomplete="off"
-          />
-          <button
-            class="send-btn"
-            [disabled]="(!messageText.trim() && !pendingAttachment()) || sending()"
-            (click)="sendMessage()"
-            title="Send"
-          >
-            @if (sending()) {
-              <i class="pi pi-spin pi-spinner"></i>
-            } @else {
-              <i class="pi pi-send"></i>
-            }
-          </button>
-        </div>
 
       </footer>
     }
@@ -529,3 +644,13 @@
   </section>
 
 </div>
+
+<!-- Image attachment lightbox -->
+@if (previewImageUrl(); as imgUrl) {
+  <div class="lightbox-backdrop" (click)="closeImagePreview()">
+    <button class="lightbox-close" (click)="closeImagePreview()" aria-label="Close preview">
+      <i class="pi pi-times"></i>
+    </button>
+    <img [src]="imgUrl" class="lightbox-img" alt="Image preview" (click)="$event.stopPropagation()" />
+  </div>
+}

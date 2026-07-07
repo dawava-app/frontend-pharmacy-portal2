@@ -4,21 +4,39 @@ import {
   inject, signal, computed, ViewChild, ElementRef, DestroyRef,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Observable } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { TokenService } from '../../../../core/auth/token.service';
 import { ChatSocketService } from '../../../../core/services/chat-socket.service';
 import { ChatApiService } from '../../services/chat-api.service';
-import { FileService } from '../../../../core/services/file.service';
-import { Conversation, ChatMessage, PresenceState, SenderProfile } from '../../models/chat.models';
+import { FileService, StagedFileResponse } from '../../../../core/services/file.service';
+import { Conversation, ChatMessage, Attachment, PresenceState, SenderProfile } from '../../models/chat.models';
 
 // Fixed tenant/entity for file uploads (pharmacy platform default)
 const UPLOAD_TENANT_ID = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+
+type AttachmentKind = 'image' | 'audio' | 'file';
+
+const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'];
+const AUDIO_EXTENSIONS = ['webm', 'ogg', 'mp3', 'wav', 'm4a', 'aac', 'opus'];
+
+function classifyMime(mimeType: string, filename: string): AttachmentKind {
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  const ext = (filename.split('.').pop() || '').toLowerCase();
+  if (IMAGE_EXTENSIONS.includes(ext)) return 'image';
+  if (AUDIO_EXTENSIONS.includes(ext)) return 'audio';
+  return 'file';
+}
 
 interface PendingAttachment {
   externalFileId: string;
   label: string;
   mimeType: string;
+  kind: AttachmentKind;
+  previewUrl?: string;
+  durationSec?: number;
 }
 
 @Component({
@@ -48,11 +66,14 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
   readonly messagesLoading      = signal(false);
   readonly sending              = signal(false);
   readonly typingUserIds        = signal<string[]>([]);
+  readonly recordingUserIds     = signal<string[]>([]);
   readonly presenceMap          = signal<Record<string, PresenceState>>({});
   readonly canLoadMore          = signal(false);
   readonly replyToMessage       = signal<ChatMessage | null>(null);
   readonly searchQuery          = signal('');
   readonly profileNames         = signal<Record<string, string>>({});
+  // Profile photo file id per userId (from GET /users/profile/:id), keyed like profileNames
+  readonly profileImageIds      = signal<Record<string, string>>({});
   readonly attachmentUrls       = signal<Record<string, string>>({});
   readonly pendingAttachment    = signal<PendingAttachment | null>(null);
   readonly uploadingFile        = signal(false);
@@ -67,8 +88,17 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
   readonly originalSenderProfiles = signal<Record<string, SenderProfile>>({});
   // Which message's sender popover is open
   readonly activeSenderPopover    = signal<string | null>(null);
-  // Message IDs hidden locally ("delete for me")
-  readonly hiddenMessageIds       = signal<string[]>([]);
+  // Image lightbox preview URL
+  readonly previewImageUrl        = signal<string | null>(null);
+  // Conversations sidebar collapsed/expanded state
+  readonly sidebarCollapsed        = signal(false);
+  // Voice recording state
+  readonly isRecording             = signal(false);
+  readonly recordingSeconds        = signal(0);
+  // Voice playback state (keyed by attachment externalFileId)
+  readonly playingAudioId          = signal<string | null>(null);
+  readonly audioCurrentTime        = signal<Record<string, number>>({});
+  readonly audioDuration           = signal<Record<string, number>>({});
 
   // ── Local state ─────────────────────────────────────────────────────────
   messageText = '';
@@ -78,19 +108,26 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
 
   private readonly profileFetchAttempted         = new Set<string>();
   private readonly originalSenderFetchAttempted  = new Set<string>();
+  private readonly attachmentUrlFetchAttempted   = new Set<string>();
+  private readonly failedProfileImageIds         = new Set<string>();
+  // Voice message durations, keyed by externalFileId — session-local only (not sent to
+  // the backend), since the real duration is re-measured from the <audio> element on playback.
+  private readonly recordedDurations             = new Map<string, number>();
   private isTypingActive = false;
   private typingTimeout?: ReturnType<typeof setTimeout>;
   private pingInterval?: ReturnType<typeof setInterval>;
   private oldestMessageId?: string;
   private shouldScrollBottom = false;
 
+  // Voice recording internals
+  private mediaRecorder?: MediaRecorder;
+  private recordingStream?: MediaStream;
+  private recordedChunks: Blob[] = [];
+  private recordingMimeType = '';
+  private recordingTimer?: ReturnType<typeof setInterval>;
+
   // ── Computed ─────────────────────────────────────────────────────────────
   readonly isManager = computed(() => this.auth.userRole() === 'manager');
-
-  readonly visibleMessages = computed(() => {
-    const hidden = this.hiddenMessageIds();
-    return hidden.length ? this.messages().filter(m => !hidden.includes(m._id)) : this.messages();
-  });
 
   readonly filteredConversations = computed(() => {
     const q     = this.searchQuery().toLowerCase().trim();
@@ -106,6 +143,11 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.selectedMsgForAction.set(null);
     this.convMenuOpen.set(null);
     this.activeSenderPopover.set(null);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+    if (this.previewImageUrl()) this.closeImagePreview();
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -125,6 +167,8 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
   ngOnDestroy(): void {
     clearInterval(this.pingInterval);
     clearTimeout(this.typingTimeout);
+    if (this.isRecording()) this.cancelRecording();
+    this.clearAttachment();
     const sel = this.selectedConversation();
     if (sel) this.socket.leaveRoom(sel._id);
     this.socket.disconnect();
@@ -178,6 +222,9 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(profile => {
         this.profileNames.update(names => ({ ...names, [userId]: profile.fullName }));
+        if (profile.imageId) {
+          this.profileImageIds.update(ids => ({ ...ids, [userId]: profile.imageId! }));
+        }
       });
   }
 
@@ -211,17 +258,23 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.activeSenderPopover.set(this.activeSenderPopover() === msgId ? null : msgId);
   }
 
+  toggleSidebarCollapsed(): void {
+    this.sidebarCollapsed.update(v => !v);
+  }
+
   selectConversation(conv: Conversation): void {
     const prev = this.selectedConversation();
     if (prev?._id === conv._id) return;
     if (prev) this.socket.leaveRoom(prev._id);
+
+    if (this.isRecording()) this.cancelRecording();
 
     this.selectedConversation.set(conv);
     this.messages.set([]);
     this.typingUserIds.set([]);
     this.canLoadMore.set(false);
     this.replyToMessage.set(null);
-    this.pendingAttachment.set(null);
+    this.clearAttachment();
     this.emojiPickerForMsg.set(null);
     this.selectedMsgForAction.set(null);
     this.editingMsgId.set(null);
@@ -304,7 +357,7 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
       content: text,
       replyTo,
       attachments: attachment
-        ? [{ externalFileId: attachment.externalFileId, label: attachment.label }]
+        ? [{ externalFileId: attachment.externalFileId, label: attachment.label, metadata: {} }]
         : undefined,
       metadata: {
         clientId,
@@ -319,7 +372,7 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.messages.update(list => [...list, optimistic]);
     this.messageText = '';
     this.replyToMessage.set(null);
-    this.pendingAttachment.set(null);
+    this.clearAttachment();
     this.shouldScrollBottom = true;
     this.stopTypingIfIdle();
 
@@ -368,35 +421,46 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
     if (!file) return;
     input.value = '';
 
-    const ownerId = this.auth.currentUser()?.id ?? this.auth.getUserId() ?? '';
     this.uploadingFile.set(true);
-
-    const formData = new FormData();
-    formData.append('TenantId',           UPLOAD_TENANT_ID);
-    formData.append('OwnerId',            ownerId);
-    formData.append('Purpose',            'license');
-    formData.append('EntityType',         'pharmacy');
-    formData.append('EntityId',           UPLOAD_TENANT_ID);
-    formData.append('Provider',           'AmazonS3');
-    formData.append('StagingTtlMinutes',  '60');
-    formData.append('File',               file);
-
-    this.fileService.stageFile(formData)
+    this.stageFile(file)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: staged => {
           this.uploadingFile.set(false);
+          const mimeType = staged.mimeType || file.type;
+          const label    = staged.originalFilename || file.name;
+          const kind     = classifyMime(mimeType, label);
           this.pendingAttachment.set({
             externalFileId: staged.id,
-            label:    staged.originalFilename || file.name,
-            mimeType: staged.mimeType || file.type,
+            label,
+            mimeType,
+            kind,
+            previewUrl: kind === 'image' ? URL.createObjectURL(file) : undefined,
           });
         },
         error: () => this.uploadingFile.set(false),
       });
   }
 
-  clearAttachment(): void { this.pendingAttachment.set(null); }
+  private stageFile(file: File, purpose: string = 'license'): Observable<StagedFileResponse> {
+    const ownerId = this.auth.currentUser()?.id ?? this.auth.getUserId() ?? '';
+    const formData = new FormData();
+    formData.append('TenantId',           UPLOAD_TENANT_ID);
+    formData.append('OwnerId',            ownerId);
+    formData.append('Purpose',            purpose);
+    formData.append('EntityType',         'pharmacy');
+    formData.append('EntityId',           UPLOAD_TENANT_ID);
+    formData.append('Provider',           'AmazonS3');
+    formData.append('StagingTtlMinutes',  '60');
+    formData.append('File',               file);
+    return this.fileService.stageFile(formData);
+  }
+
+  clearAttachment(): void {
+    const pending = this.pendingAttachment();
+    if (pending?.previewUrl) URL.revokeObjectURL(pending.previewUrl);
+    this.pendingAttachment.set(null);
+  }
 
   openAttachment(externalFileId: string): void {
     const cached = this.attachmentUrls()[externalFileId];
@@ -413,6 +477,227 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
         },
         error: () => {},
       });
+  }
+
+  // ── Image / audio attachment helpers ──────────────────────────────────────
+  attachmentKind(att: Attachment): AttachmentKind {
+    const mime = (att.metadata?.['mimeType'] as string) || '';
+    return classifyMime(mime, att.label || '');
+  }
+
+  getAttachmentUrl(att: Attachment): string | null {
+    return this.resolveFileUrl(att.externalFileId);
+  }
+
+  // Reuses the same signed-URL cache/fetch as chat attachments — a profile
+  // photo's imageId is just another file id resolved via the same file service.
+  private resolveFileUrl(fileId: string): string | null {
+    const cached = this.attachmentUrls()[fileId];
+    if (cached) return cached;
+    this.fetchAttachmentUrl(fileId);
+    return null;
+  }
+
+  private fetchAttachmentUrl(externalFileId: string): void {
+    if (this.attachmentUrlFetchAttempted.has(externalFileId)) return;
+    this.attachmentUrlFetchAttempted.add(externalFileId);
+    this.fileService.getFile(externalFileId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: res => {
+          if (res.fileLink) {
+            this.attachmentUrls.update(urls => ({ ...urls, [externalFileId]: res.fileLink }));
+          }
+        },
+        error: () => {},
+      });
+  }
+
+  openImagePreview(url: string | null, event?: MouseEvent): void {
+    event?.stopPropagation();
+    if (!url) return;
+    this.previewImageUrl.set(url);
+  }
+
+  closeImagePreview(): void {
+    this.previewImageUrl.set(null);
+  }
+
+  // ── Voice recording ────────────────────────────────────────────────────────
+  private pickAudioMimeType(): string {
+    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+    return candidates.find(c => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(c)) ?? '';
+  }
+
+  async startRecording(): Promise<void> {
+    const sel = this.selectedConversation();
+    if (!sel || this.isRecording() || this.sending()) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.recordingStream    = stream;
+      this.recordingMimeType  = this.pickAudioMimeType();
+      this.recordedChunks     = [];
+      this.mediaRecorder = this.recordingMimeType
+        ? new MediaRecorder(stream, { mimeType: this.recordingMimeType })
+        : new MediaRecorder(stream);
+      this.mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) this.recordedChunks.push(e.data);
+      };
+      this.mediaRecorder.start();
+      this.isRecording.set(true);
+      this.recordingSeconds.set(0);
+      this.recordingTimer = setInterval(() => this.recordingSeconds.update(s => s + 1), 1000);
+      this.socket.startRecording(sel._id);
+    } catch {
+      this.isRecording.set(false);
+    }
+  }
+
+  cancelRecording(): void {
+    if (!this.isRecording()) return;
+    this.mediaRecorder?.stop();
+    this.recordedChunks = [];
+    this.stopRecordingCleanup();
+  }
+
+  sendRecording(): void {
+    if (!this.isRecording() || !this.mediaRecorder) return;
+    const durationSec = this.recordingSeconds();
+    const mimeType    = this.recordingMimeType || 'audio/webm';
+    const recorder    = this.mediaRecorder;
+
+    recorder.onstop = () => {
+      // Strip codec parameters (e.g. ";codecs=opus") — MediaRecorder needs them to pick
+      // an encoder, but the upload API only expects a plain MIME type like "audio/webm".
+      const uploadMimeType = mimeType.split(';')[0];
+      const blob = new Blob(this.recordedChunks, { type: uploadMimeType });
+      const ext  = uploadMimeType.includes('ogg') ? 'ogg' : uploadMimeType.includes('mp4') ? 'm4a' : 'webm';
+      const file = new File([blob], `voice-message-${Date.now()}.${ext}`, { type: uploadMimeType });
+      this.uploadVoiceMessage(file, durationSec);
+    };
+    recorder.stop();
+    this.stopRecordingCleanup();
+  }
+
+  private stopRecordingCleanup(): void {
+    const sel = this.selectedConversation();
+    if (sel) this.socket.stopRecording(sel._id);
+    clearInterval(this.recordingTimer);
+    this.recordingStream?.getTracks().forEach(t => t.stop());
+    this.recordingStream = undefined;
+    this.mediaRecorder   = undefined;
+    this.isRecording.set(false);
+    this.recordingSeconds.set(0);
+  }
+
+  private uploadVoiceMessage(file: File, durationSec: number): void {
+    if (!this.selectedConversation()) return;
+    this.uploadingFile.set(true);
+    // TODO: 'chat' is a guess pending backend confirmation of the correct Purpose
+    // value for chat attachments — 'license' (used for images/files) is scoped to
+    // pharmacy registration documents and appears to reject audio content types.
+    this.stageFile(file, 'chat')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: staged => {
+          this.uploadingFile.set(false);
+          this.recordedDurations.set(staged.id, durationSec);
+          this.pendingAttachment.set({
+            externalFileId: staged.id,
+            label:    staged.originalFilename || file.name,
+            mimeType: staged.mimeType || file.type,
+            kind: 'audio',
+            durationSec,
+          });
+          this.sendMessage();
+        },
+        error: () => this.uploadingFile.set(false),
+      });
+  }
+
+  // ── Voice playback ─────────────────────────────────────────────────────────
+  toggleAudioPlayback(att: Attachment, audioEl: HTMLAudioElement): void {
+    if (this.playingAudioId() === att.externalFileId) {
+      audioEl.pause();
+      return;
+    }
+    const url = this.getAttachmentUrl(att);
+    if (!url) return;
+    if (audioEl.src !== url) audioEl.src = url;
+    audioEl.play();
+  }
+
+  onAudioPlay(externalFileId: string): void {
+    this.playingAudioId.set(externalFileId);
+  }
+
+  onAudioPause(externalFileId: string): void {
+    if (this.playingAudioId() === externalFileId) this.playingAudioId.set(null);
+  }
+
+  onAudioEnded(externalFileId: string): void {
+    this.playingAudioId.set(null);
+    this.audioCurrentTime.update(map => ({ ...map, [externalFileId]: 0 }));
+  }
+
+  onAudioTimeUpdate(externalFileId: string, audioEl: HTMLAudioElement): void {
+    this.audioCurrentTime.update(map => ({ ...map, [externalFileId]: audioEl.currentTime }));
+  }
+
+  onAudioLoadedMetadata(externalFileId: string, audioEl: HTMLAudioElement): void {
+    if (isFinite(audioEl.duration)) {
+      this.audioDuration.update(map => ({ ...map, [externalFileId]: audioEl.duration }));
+      return;
+    }
+    // Chrome reports Infinity for MediaRecorder-produced webm blobs until a seek forces
+    // it to recompute the real duration — force that recompute, then reset playback to 0.
+    const fixDuration = () => {
+      if (isFinite(audioEl.duration)) {
+        this.audioDuration.update(map => ({ ...map, [externalFileId]: audioEl.duration }));
+        audioEl.currentTime = 0;
+        audioEl.removeEventListener('durationchange', fixDuration);
+      }
+    };
+    audioEl.addEventListener('durationchange', fixDuration);
+    audioEl.currentTime = 1e101;
+  }
+
+  seekAudio(att: Attachment, audioEl: HTMLAudioElement, barEl: HTMLElement, event: MouseEvent): void {
+    event.stopPropagation();
+    const total = this.getAudioDuration(att);
+    if (!total || !audioEl.src) return;
+    const rect  = barEl.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    audioEl.currentTime = ratio * total;
+    this.audioCurrentTime.update(map => ({ ...map, [att.externalFileId]: audioEl.currentTime }));
+  }
+
+  getAudioDuration(att: Attachment): number {
+    const measured = this.audioDuration()[att.externalFileId];
+    if (measured && isFinite(measured)) return measured;
+    // Recorded duration isn't persisted server-side (kept out of the attachment payload
+    // to avoid breaking the backend's message DTO) — fall back to this session's local
+    // recording-time measurement until the real <audio> duration is measured on playback.
+    return this.recordedDurations.get(att.externalFileId) ?? 0;
+  }
+
+  getAudioDisplayTime(att: Attachment): number {
+    if (this.playingAudioId() !== att.externalFileId) return this.getAudioDuration(att);
+    return this.audioCurrentTime()[att.externalFileId] ?? 0;
+  }
+
+  getAudioProgress(att: Attachment): number {
+    const total = this.getAudioDuration(att);
+    if (!total) return 0;
+    const current = this.audioCurrentTime()[att.externalFileId] ?? 0;
+    return Math.min(100, (current / total) * 100);
+  }
+
+  formatDuration(totalSeconds: number): string {
+    const s   = Math.max(0, Math.round(totalSeconds || 0));
+    const m   = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
   }
 
   // ── Message action menu ───────────────────────────────────────────────────
@@ -469,11 +754,6 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
   cancelEdit(): void {
     this.editingMsgId.set(null);
     this.editText = '';
-  }
-
-  deleteForMe(msg: ChatMessage): void {
-    this.selectedMsgForAction.set(null);
-    this.hiddenMessageIds.update(ids => [...ids, msg._id]);
   }
 
   deleteForEveryone(msg: ChatMessage): void {
@@ -670,6 +950,20 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
         }
       });
 
+    this.socket.recording$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(e => {
+        if (e.conversationId !== this.selectedConversation()?._id) return;
+        if (e.isActive) {
+          this.recordingUserIds.update(ids => ids.includes(e.userId) ? ids : [...ids, e.userId]);
+          setTimeout(() => {
+            this.recordingUserIds.update(ids => ids.filter(id => id !== e.userId));
+          }, 15000);
+        } else {
+          this.recordingUserIds.update(ids => ids.filter(id => id !== e.userId));
+        }
+      });
+
     this.socket.presence$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(e => {
@@ -842,6 +1136,33 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
   getConvInitials(conv: Conversation): string {
     const name = this.getConvName(conv);
     return name.split(/[\s_\-@.]/).map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'C';
+  }
+
+  // Conversation avatar photo (used in both the sidebar list and the thread
+  // header) — falls back to initials if there's no imageId, it hasn't loaded
+  // yet, or the image failed to load.
+  getConvAvatarUrl(conv: Conversation): string | null {
+    const other = this.getOtherParticipant(conv);
+    if (!other) return null;
+    const imageId = this.profileImageIds()[other.externalUserId];
+    if (!imageId || this.failedProfileImageIds.has(imageId)) return null;
+    return this.resolveFileUrl(imageId);
+  }
+
+  onConvAvatarError(conv: Conversation): void {
+    const other = this.getOtherParticipant(conv);
+    const imageId = other ? this.profileImageIds()[other.externalUserId] : undefined;
+    if (imageId) this.failedProfileImageIds.add(imageId);
+  }
+
+  getSelectedConvAvatarUrl(): string | null {
+    const conv = this.selectedConversation();
+    return conv ? this.getConvAvatarUrl(conv) : null;
+  }
+
+  onThreadAvatarError(): void {
+    const conv = this.selectedConversation();
+    if (conv) this.onConvAvatarError(conv);
   }
 
   getPresenceStatus(conv: Conversation): PresenceState {

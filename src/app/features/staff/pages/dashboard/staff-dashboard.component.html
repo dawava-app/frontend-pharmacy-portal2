@@ -2,7 +2,11 @@
 <div class="page-header">
   <div>
     <div class="breadcrumb">
-      <span>Main Branch</span>
+      @if (pharmacyName()) {
+        <span>{{ pharmacyName() }}</span>
+        <i class="pi pi-chevron-right"></i>
+      }
+      <span>{{ branchLabel() }}</span>
       <i class="pi pi-chevron-right"></i>
       <span class="active">Dashboard</span>
     </div>
@@ -130,9 +134,12 @@
     <!-- Map -->
     <div class="map-card">
       <h4>STORE LOCATION</h4>
-      <p class="map-address">{{ branchLabel }}</p>
+      <p class="map-address">{{ branchLabel() }}</p>
+      @if (branchAddress()) {
+        <p class="map-address-sub">{{ branchAddress() }}</p>
+      }
       <div class="map-wrap">
-        <app-map [lat]="branchLat" [lng]="branchLng" [label]="branchLabel"/>
+        <app-map [lat]="branchLat()" [lng]="branchLng()" [label]="branchLabel()"/>
       </div>
     </div>
   </div>

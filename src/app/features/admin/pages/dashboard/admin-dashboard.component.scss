@@ -102,6 +102,11 @@
 }
 
 /* Branch table */
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .branch-table {
   width: 100%; border-collapse: collapse;
 

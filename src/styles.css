@@ -30,26 +30,26 @@
 }
 
 [data-theme="dark"] {
-  --color-brand-primary:        #2dd4bf;
-  --color-brand-hover:          #14b8a5;
-  --color-brand-deep:           #0f766e;
-  --color-brand-surface:        rgba(20,184,165,0.08);
-  --color-brand-surface-strong: rgba(20,184,165,0.15);
+  --color-brand-primary:        #38aca1;
+  --color-brand-hover:          #298e84;
+  --color-brand-deep:           #1c4a45;
+  --color-brand-surface:        rgba(56,172,161,0.08);
+  --color-brand-surface-strong: rgba(56,172,161,0.16);
 
   --color-bg-page:              #0f172a;
   --color-bg-card:              #1e293b;
-  --color-bg-surface-secondary: #334155;
+  --color-bg-surface-secondary: #26334a;
   --color-border:               #334155;
-  --color-border-subtle:        #1e293b;
+  --color-border-subtle:        rgba(148,163,184,0.14);
 
   --color-text-primary:         #e2e8f0;
   --color-text-secondary:       #94a3b8;
-  --color-text-muted:           #64748b;
+  --color-text-muted:           #8291a8;
 
   --color-warning-text: #fbbf24;
   --color-warning-bg:   rgba(245,158,11,0.15);
-  --color-success-text: #5eead4;
-  --color-success-bg:   rgba(20,184,165,0.15);
+  --color-success-text: #68cac0;
+  --color-success-bg:   rgba(56,172,161,0.15);
   --color-danger-text:  #fb7185;
   --color-danger-bg:    rgba(239,68,68,0.15);
 }
