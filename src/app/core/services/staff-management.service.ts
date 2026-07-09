@@ -194,4 +194,21 @@ export class StaffManagementService {
       map(res => res.data)
     );
   }
+
+  validateInvitation(token: string): Observable<any> {
+    const url = `${this.BASE}/invitations/validate?token=${encodeURIComponent(token)}`;
+    return this.http.get<{ success: boolean; data: any }>(url).pipe(
+      map(res => res.data)
+    );
+  }
+
+  acceptInvitation(token: string): Observable<{ success: boolean; message: string }> {
+    const url = `${this.BASE}/invitations/accept?token=${encodeURIComponent(token)}`;
+    return this.http.post<{ success: boolean; message: string }>(url, {});
+  }
+
+  rejectInvitation(token: string): Observable<{ success: boolean; message: string }> {
+    const url = `${this.BASE}/invitations/reject?token=${encodeURIComponent(token)}`;
+    return this.http.post<{ success: boolean; message: string }>(url, {});
+  }
 }

@@ -398,8 +398,8 @@ export class StaffManagementComponent implements OnInit {
 
     this.inviting.set(true);
     
-    // We send an invitation link with baseUrl mapping to our app's onboarding
-    const baseUrl = `${window.location.origin}/onboarding`;
+    // We send an invitation link with baseUrl mapping to our app's join portal
+    const baseUrl = `${window.location.origin}/join`;
 
     this.staffSvc.createInvitation({
       role_id: this.inviteRoleId(),
