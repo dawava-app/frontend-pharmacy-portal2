@@ -9,7 +9,10 @@ export const managerRoutes: Routes = [
     path: 'dashboard',
     loadComponent: () => import('./pages/dashboard/manager-dashboard.component').then(m => m.ManagerDashboardComponent),
   },
-  { path: 'inventory', loadComponent: placeholder },
+  {
+    path: 'inventory',
+    loadComponent: () => import('../inventory/inventory-dashboard.component').then(m => m.InventoryDashboardComponent),
+  },
   { path: 'sales',     loadComponent: placeholder },
   {
     path: 'messages',

@@ -9,7 +9,10 @@ export const staffRoutes: Routes = [
     path: 'dashboard',
     loadComponent: () => import('./pages/dashboard/staff-dashboard.component').then(m => m.StaffDashboardComponent),
   },
-  { path: 'inventory', loadComponent: placeholder },
+  {
+    path: 'inventory',
+    loadComponent: () => import('../inventory/inventory-dashboard.component').then(m => m.InventoryDashboardComponent),
+  },
   { path: 'sales',     loadComponent: placeholder },
   {
     path: 'messages',
