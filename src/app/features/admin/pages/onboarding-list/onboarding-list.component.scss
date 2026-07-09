@@ -13,7 +13,9 @@
   gap: 16px;
   flex-wrap: wrap;
 
-  &__title-group { flex: 1; }
+  &__title-group {
+    flex: 1;
+  }
 }
 
 .page-title {
@@ -24,7 +26,7 @@
 }
 
 .page-subtitle {
-  font-size: 0.875rem;
+  font-size: 8px;
   color: var(--color-text-muted);
   margin: 0;
 }
@@ -158,8 +160,13 @@
   border-bottom: 1px solid var(--color-border);
   transition: background 0.15s;
 
-  &:last-child { border-bottom: none; }
-  &:hover { background: var(--color-bg-surface-secondary); }
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: var(--color-bg-surface-secondary);
+  }
 
   td {
     padding: 14px 16px;
@@ -168,10 +175,27 @@
   }
 }
 
-.cell--mono  { font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--color-text-muted); }
-.cell--name  { font-weight: 600; color: var(--color-text-primary); max-width: 200px; }
-.cell--center { text-align: center; }
-.cell--date  { white-space: nowrap; font-size: 0.82rem; }
+.cell--mono {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.cell--name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  max-width: 200px;
+}
+
+.cell--center {
+  text-align: center;
+}
+
+.cell--date {
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
 .cell--action {
   text-align: right;
   color: var(--color-text-muted);
@@ -190,20 +214,46 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 
-  &--draft       { background: rgba(107,114,128,0.12); color: #6b7280; }
-  &--submitted   { background: rgba(59,130,246,0.12);  color: #3b82f6; }
-  &--underreview { background: rgba(245,158,11,0.12);  color: #f59e0b; }
-  &--approved    { background: rgba(16,185,129,0.12);  color: #10b981; }
-  &--rejected    { background: rgba(239,68,68,0.12);   color: #ef4444; }
+  &--draft {
+    background: rgba(107, 114, 128, 0.12);
+    color: #6b7280;
+  }
+
+  &--submitted {
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+  }
+
+  &--underreview {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+  }
+
+  &--approved {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+  }
+
+  &--rejected {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+  }
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
-.spin { animation: spin 0.8s linear infinite; }
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
 
 @media (max-width: 768px) {
-  .page { padding: 16px; }
+  .page {
+    padding: 16px;
+  }
 
   // Hide the "Submitted" date column only — keep the trailing arrow column
   // visible since it's the only visual cue that a row is clickable.

@@ -15,7 +15,10 @@ export const managerRoutes: Routes = [
     path: 'messages',
     loadComponent: () => import('../chat/pages/chat-page/chat-page.component').then(m => m.ChatPageComponent),
   },
-  { path: 'staff',     loadComponent: placeholder },
+  {
+    path: 'staff',
+    loadComponent: () => import('./pages/staff/staff-management.component').then(m => m.StaffManagementComponent),
+  },
   { path: 'reports',   loadComponent: placeholder },
   {
     path: 'settings',
