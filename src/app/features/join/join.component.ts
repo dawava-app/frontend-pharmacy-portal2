@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { switchMap } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { StaffManagementService } from '../../core/services/staff-management.service';
 
@@ -70,7 +71,10 @@ export class JoinComponent implements OnInit {
     if (!this.token || this.accepting() || this.rejecting()) return;
     this.accepting.set(true);
 
-    this.staffSvc.acceptInvitation(this.token).subscribe({
+    this.staffSvc.acceptInvitation(this.token).pipe(
+      switchMap(() => this.auth.refreshToken()),
+      switchMap(() => this.auth.fetchMe())
+    ).subscribe({
       next: () => {
         this.accepting.set(false);
         this.state.set('success');
@@ -90,7 +94,7 @@ export class JoinComponent implements OnInit {
     this.staffSvc.rejectInvitation(this.token).subscribe({
       next: () => {
         this.rejecting.set(false);
-        this.state.set('declined');
+        this.auth.logout();
       },
       error: (err) => {
         this.rejecting.set(false);
