@@ -9,8 +9,14 @@ export const staffRoutes: Routes = [
     path: 'dashboard',
     loadComponent: () => import('./pages/dashboard/staff-dashboard.component').then(m => m.StaffDashboardComponent),
   },
-  { path: 'inventory', loadComponent: placeholder },
-  { path: 'sales',     loadComponent: placeholder },
+  {
+    path: 'inventory',
+    loadComponent: () => import('../inventory/inventory-dashboard.component').then(m => m.InventoryDashboardComponent),
+  },
+  {
+    path: 'sales',
+    loadComponent: () => import('../sales/sales-dashboard.component').then(m => m.SalesDashboardComponent),
+  },
   {
     path: 'messages',
     loadComponent: () => import('../chat/pages/chat-page/chat-page.component').then(m => m.ChatPageComponent),
