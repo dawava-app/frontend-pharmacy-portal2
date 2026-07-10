@@ -11,7 +11,10 @@ export const adminRoutes: Routes = [
   },
   { path: 'inventory',    loadComponent: placeholder },
   { path: 'branches',     loadComponent: placeholder },
-  { path: 'staff',        loadComponent: placeholder },
+  {
+    path: 'staff',
+    loadComponent: () => import('../manager/pages/staff/staff-management.component').then(m => m.StaffManagementComponent),
+  },
   { path: 'transactions', loadComponent: placeholder },
   { path: 'reports',      loadComponent: placeholder },
   {

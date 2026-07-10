@@ -19,6 +19,12 @@ export const routes: Routes = [
     children: onboardingRoutes,
   },
 
+  /* ── Join Invitation ── */
+  {
+    path: 'join',
+    loadComponent: () => import('./features/join/join.component').then(m => m.JoinComponent),
+  },
+
   /* ── Admin shell ── */
   {
     path: 'admin',

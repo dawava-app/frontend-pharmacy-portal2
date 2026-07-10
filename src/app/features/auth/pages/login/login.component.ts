@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ThemeService } from '../../../../core/services/theme.service';
 
@@ -26,9 +26,11 @@ import { ThemeService } from '../../../../core/services/theme.service';
   styleUrl: './login.component.scss',
 })
 export class LoginComponent {
-  private readonly fb   = inject(FormBuilder);
-  readonly auth         = inject(AuthService);
-  readonly theme        = inject(ThemeService);
+  private readonly fb     = inject(FormBuilder);
+  readonly auth           = inject(AuthService);
+  readonly theme          = inject(ThemeService);
+  private readonly router = inject(Router);
+  private readonly route  = inject(ActivatedRoute);
 
   showPassword = signal(false);
   loading      = signal(false);
@@ -59,16 +61,27 @@ export class LoginComponent {
     });
   }
 
-  /* ── Internal: load /me and navigate ── */
   private loadProfileAndNavigate(hasDashboardAccess: boolean): void {
-    if (!hasDashboardAccess) {
+    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+    const isJoinFlow = returnUrl?.startsWith('/join');
+
+    // If the user is accepting an invitation, skip the dashboard-access check
+    // and navigate directly to the join page so they can accept or decline.
+    if (!hasDashboardAccess && !isJoinFlow) {
       this.loading.set(false);
       this.error.set('Your account does not have access to this dashboard. Please contact your administrator.');
       return;
     }
 
     this.auth.fetchMe().subscribe({
-      next:  () => { this.loading.set(false); this.auth.navigateByRole(); },
+      next:  () => {
+        this.loading.set(false);
+        if (returnUrl) {
+          this.router.navigateByUrl(returnUrl);
+        } else {
+          this.auth.navigateByRole();
+        }
+      },
       error: () => {
         this.loading.set(false);
         this.error.set('Failed to load your profile. Please try again.');

@@ -1,0 +1,98 @@
+<div class="join-page-wrapper">
+  <!-- Loading Card -->
+  <div class="join-card loading-card" *ngIf="state() === 'loading'">
+    <i class="pi pi-spin pi-spinner spinner-icon"></i>
+    <h3>Validating Invitation...</h3>
+    <p>Please wait while we check your invitation link credentials.</p>
+  </div>
+
+  <!-- Preview Card -->
+  <div class="join-card preview-card" *ngIf="state() === 'preview' && invitationData()">
+    <div class="card-header">
+      <div class="logo-box">
+        <i class="pi pi-envelope envelope-icon"></i>
+      </div>
+      <h2>Join Pharmacy Portal</h2>
+      <p class="subtitle">You have been invited to join the staff team</p>
+    </div>
+
+    <div class="card-body">
+      <div class="preview-item">
+        <span class="preview-label">Pharmacy Name</span>
+        <span class="preview-value">{{ invitationData()?.pharmacy_name || 'Pharmacy Portal Member' }}</span>
+      </div>
+
+      <div class="preview-item">
+        <span class="preview-label">Assigned Branches</span>
+        <div class="branches-badges">
+          <span class="branch-tag" *ngFor="let branch of invitationData()?.branch_names">
+            <i class="pi pi-map-marker mr-1"></i> {{ branch }}
+          </span>
+        </div>
+      </div>
+
+      <div class="preview-item">
+        <span class="preview-label">Target Role</span>
+        <span class="role-badge" [class]="(invitationData()?.role_name || '')?.toLowerCase()?.replace(' ', '-')">
+          {{ invitationData()?.role_name }}
+        </span>
+      </div>
+
+      <div class="preview-item">
+        <span class="preview-label">Expires On</span>
+        <span class="preview-value date-value">
+          <i class="pi pi-calendar mr-1"></i> {{ invitationData()?.expires_at | date:'mediumDate' }}
+        </span>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <button class="btn-decline" [disabled]="accepting() || rejecting()" (click)="decline()">
+        <i class="pi pi-times mr-1" *ngIf="!rejecting()"></i>
+        <i class="pi pi-spin pi-spinner mr-1" *ngIf="rejecting()"></i>
+        Decline
+      </button>
+      <button class="btn-accept" [disabled]="accepting() || rejecting()" (click)="accept()">
+        <i class="pi pi-check mr-1" *ngIf="!accepting()"></i>
+        <i class="pi pi-spin pi-spinner mr-1" *ngIf="accepting()"></i>
+        Accept & Join Team
+      </button>
+    </div>
+  </div>
+
+  <!-- Success Card -->
+  <div class="join-card result-card success-card" *ngIf="state() === 'success'">
+    <div class="result-icon-wrapper success-icon">
+      <i class="pi pi-check-circle"></i>
+    </div>
+    <h2>Welcome Aboard!</h2>
+    <p>Your invitation has been accepted and your pharmacy branch assignments are completed successfully.</p>
+    <button class="btn-action w-full mt-6" (click)="goToDashboard()">
+      Access My Dashboard
+    </button>
+  </div>
+
+  <!-- Declined Card -->
+  <div class="join-card result-card declined-card" *ngIf="state() === 'declined'">
+    <div class="result-icon-wrapper declined-icon">
+      <i class="pi pi-times-circle"></i>
+    </div>
+    <h2>Invitation Declined</h2>
+    <p>You have declined the staff invitation. You can now close this window or return to the login page.</p>
+    <button class="btn-secondary w-full mt-6" (click)="goToLogin()">
+      Back to Login
+    </button>
+  </div>
+
+  <!-- Error Card -->
+  <div class="join-card result-card error-card" *ngIf="state() === 'error'">
+    <div class="result-icon-wrapper error-icon">
+      <i class="pi pi-exclamation-circle"></i>
+    </div>
+    <h2>Invitation Invalid</h2>
+    <p class="error-text">{{ errorMessage() }}</p>
+    <button class="btn-secondary w-full mt-6" (click)="goToLogin()">
+      Back to Login
+    </button>
+  </div>
+</div>
