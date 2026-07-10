@@ -72,8 +72,29 @@ export class JoinComponent implements OnInit {
     this.accepting.set(true);
 
     this.staffSvc.acceptInvitation(this.token).pipe(
+      // 1. Refresh token to load the newly assigned scopes/branches
       switchMap(() => this.auth.refreshToken()),
-      switchMap(() => this.auth.fetchMe())
+      // 2. Determine target branch and switch to it
+      switchMap(() => {
+        const inviteBranches = this.invitationData()?.branch_names || [];
+        const scopes = this.auth.availableScopes() || [];
+        
+        // Try to match by branch name
+        let targetBranchId = scopes.find(s => inviteBranches.includes(s.branch_name || ''))?.branch_id;
+        
+        // Fallback to first available scope
+        if (!targetBranchId) {
+          targetBranchId = scopes[0]?.branch_id;
+        }
+
+        if (!targetBranchId) {
+          // If no branch ID is found at all, just fall back to standard profile fetch
+          return this.auth.fetchMe();
+        }
+
+        // Switch to the target branch to obtain a fully-scoped token for that branch
+        return this.auth.switchBranch(targetBranchId);
+      })
     ).subscribe({
       next: () => {
         this.accepting.set(false);

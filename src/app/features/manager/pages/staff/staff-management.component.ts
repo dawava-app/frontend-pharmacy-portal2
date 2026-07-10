@@ -544,11 +544,13 @@ export class StaffManagementComponent implements OnInit {
   resolveUserProfile(a: StaffAssignment) {
     if (this.resolvedProfiles.has(a.userId)) {
       const cached = this.resolvedProfiles.get(a.userId)!;
-      a.fullName = cached.fullName;
-      a.email = cached.email;
-      a.phone = cached.phone;
-      a.avatarUrl = cached.avatarUrl;
-      a.lastLoginAt = cached.lastLoginAt;
+      this.assignments.update(items =>
+        items.map(item =>
+          item.userId === a.userId
+            ? { ...item, ...cached }
+            : item
+        )
+      );
       return;
     }
 
@@ -571,22 +573,28 @@ export class StaffManagementComponent implements OnInit {
 
           this.resolvedProfiles.set(a.userId, details);
 
-          a.fullName = details.fullName;
-          a.email = details.email;
-          a.phone = details.phone;
-          a.lastLoginAt = details.lastLoginAt;
-
           if (p.imageId) {
             this.fileService.getFile(p.imageId).subscribe({
               next: (fileRes) => {
                 details.avatarUrl = fileRes.fileLink;
-                a.avatarUrl = fileRes.fileLink;
-                // Force angular change detection by cloning signal value
-                this.assignments.set([...this.assignments()]);
+                this.resolvedProfiles.set(a.userId, details); // Update cache with avatar url
+                this.assignments.update(items =>
+                  items.map(item =>
+                    item.userId === a.userId
+                      ? { ...item, ...details }
+                      : item
+                  )
+                );
               }
             });
           } else {
-            this.assignments.set([...this.assignments()]);
+            this.assignments.update(items =>
+              items.map(item =>
+                item.userId === a.userId
+                  ? { ...item, ...details }
+                  : item
+              )
+            );
           }
         }
       },
