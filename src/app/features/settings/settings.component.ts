@@ -236,6 +236,10 @@ export class SettingsComponent implements OnInit {
     this.router.navigate([`${base}/settings/sessions`]);
   }
 
+  goToRoles(): void {
+    this.router.navigate(['/manager/settings/roles']);
+  }
+
   changePassword(): void {
     this.pwdError.set('');
     this.pwdSuccess.set('');

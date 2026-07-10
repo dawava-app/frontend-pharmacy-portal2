@@ -1,0 +1,256 @@
+<div class="page">
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="page-header__title-group">
+      <h1 class="page-title">Roles &amp; Permissions</h1>
+      <p class="page-subtitle">Create roles and configure what each one can access. Managers use these roles to manage their staff.</p>
+    </div>
+    <div class="page-header__meta">
+      <button class="btn-brand" (click)="openCreateModal()">
+        <i class="pi pi-plus"></i>
+        New Role
+      </button>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+        <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <input
+        class="search-input"
+        type="text"
+        placeholder="Search roles by name or description…"
+        [value]="search()"
+        (input)="onSearch($any($event.target).value)"
+      />
+    </div>
+
+    <label class="toggle-inactive">
+      <input
+        type="checkbox"
+        [checked]="includeInactive()"
+        (change)="onToggleInactive($any($event.target).checked)"
+      />
+      Show inactive roles
+    </label>
+  </div>
+
+  <!-- Alerts -->
+  @if (error()) {
+    <div class="alert alert--error">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      {{ error() }}
+    </div>
+  }
+
+  @if (actionSuccess()) {
+    <div class="alert alert--success">
+      <i class="pi pi-check-circle"></i>
+      {{ actionSuccess() }}
+    </div>
+  }
+
+  <!-- Table -->
+  <div class="table-wrap">
+    @if (loading()) {
+      <div class="loader-row">
+        <svg class="spin" width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        Loading roles…
+      </div>
+    } @else if (filtered().length === 0) {
+      <div class="empty-state">
+        <i class="pi pi-shield"></i>
+        <span>{{ search() ? 'No roles match your search.' : 'No roles yet. Create your first role to get started.' }}</span>
+      </div>
+    } @else {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Description</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Updated</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (role of filtered(); track trackById($index, role)) {
+            <tr class="data-row" (click)="viewPermissions(role)">
+              <td class="cell--name">{{ role.name }}</td>
+              <td class="cell--desc">{{ role.description || '—' }}</td>
+              <td>
+                @if (role.isSystemRole) {
+                  <span class="status-badge badge-system"><i class="pi pi-lock"></i> System</span>
+                } @else {
+                  <span class="status-badge badge-custom">Custom</span>
+                }
+              </td>
+              <td>
+                <span class="status-badge" [class.badge-success]="role.isActive" [class.badge-danger]="!role.isActive">
+                  {{ role.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+              <td class="cell--date">{{ role.updatedAt | date:'dd MMM yyyy' }}</td>
+              <td class="cell--actions">
+                <button class="btn-icon" title="View permissions" (click)="viewPermissions(role, $event)">
+                  <i class="pi pi-eye"></i>
+                </button>
+                <button
+                  class="btn-icon"
+                  [title]="role.isSystemRole ? 'System role permissions cannot be edited' : 'Manage permissions'"
+                  [disabled]="role.isSystemRole"
+                  (click)="openManagePermissions(role, $event)"
+                >
+                  <i class="pi pi-sliders-h"></i>
+                </button>
+                <button
+                  class="btn-icon"
+                  title="Edit role"
+                  [disabled]="role.isSystemRole"
+                  (click)="openEditModal(role, $event)"
+                >
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button
+                  class="btn-icon btn-icon--danger"
+                  title="Delete role"
+                  [disabled]="role.isSystemRole"
+                  (click)="openDeleteConfirm(role, $event)"
+                >
+                  <i class="pi pi-trash"></i>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>
+
+<!-- Create / Edit modal -->
+@if (showFormModal()) {
+  <div class="dialog-backdrop" (click)="closeFormModal()">
+    <div class="dialog-box" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <div class="dialog-icon">
+          <i class="pi" [class.pi-plus]="!editingRole()" [class.pi-pencil]="editingRole()"></i>
+        </div>
+        <div>
+          <h3 class="dialog-title">{{ editingRole() ? 'Edit Role' : 'New Role' }}</h3>
+          <p class="dialog-sub">{{ editingRole() ? 'Update this role\'s name and description.' : 'Give the new role a name and description. You can assign permissions after it\'s created.' }}</p>
+        </div>
+        <button class="dialog-close" (click)="closeFormModal()">
+          <i class="pi pi-times"></i>
+        </button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submitForm()">
+        <div class="form-group">
+          <label for="role-name">Role Name</label>
+          <input
+            id="role-name"
+            type="text"
+            formControlName="name"
+            placeholder="e.g. Branch Cashier"
+            autocomplete="off"
+          />
+          @if (hasError('name', 'required')) {
+            <span class="field-error">Role name is required.</span>
+          }
+          @if (hasError('name', 'minlength')) {
+            <span class="field-error">Role name must be at least 2 characters.</span>
+          }
+          @if (hasError('name', 'maxlength')) {
+            <span class="field-error">Role name must be under 100 characters.</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="role-desc">Description</label>
+          <textarea
+            id="role-desc"
+            formControlName="description"
+            rows="3"
+            placeholder="What is this role for?"
+          ></textarea>
+          @if (hasError('description', 'maxlength')) {
+            <span class="field-error">Description must be under 500 characters.</span>
+          }
+        </div>
+
+        @if (formError()) {
+          <div class="dialog-error">
+            <i class="pi pi-exclamation-circle"></i>
+            {{ formError() }}
+          </div>
+        }
+
+        <div class="dialog-actions">
+          <button type="button" class="btn-cancel" (click)="closeFormModal()" [disabled]="formLoading()">
+            Cancel
+          </button>
+          <button type="submit" class="btn-brand" [disabled]="formLoading()">
+            @if (formLoading()) {
+              <span class="spinner"></span> Saving…
+            } @else {
+              {{ editingRole() ? 'Save Changes' : 'Create Role' }}
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Delete confirm -->
+@if (roleToDelete(); as role) {
+  <div class="dialog-backdrop" (click)="closeDeleteConfirm()">
+    <div class="dialog-box" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <div class="dialog-icon dialog-icon--danger">
+          <i class="pi pi-exclamation-triangle"></i>
+        </div>
+        <div>
+          <h3 class="dialog-title">Delete Role</h3>
+          <p class="dialog-sub">
+            Are you sure you want to delete <strong>{{ role.name }}</strong>? This cannot be undone, and any manager
+            currently using this role to manage staff access will lose it.
+          </p>
+        </div>
+        <button class="dialog-close" (click)="closeDeleteConfirm()">
+          <i class="pi pi-times"></i>
+        </button>
+      </div>
+
+      @if (deleteError()) {
+        <div class="dialog-error">
+          <i class="pi pi-exclamation-circle"></i>
+          {{ deleteError() }}
+        </div>
+      }
+
+      <div class="dialog-actions">
+        <button class="btn-cancel" (click)="closeDeleteConfirm()" [disabled]="deleteLoading()">
+          Cancel
+        </button>
+        <button class="btn-danger" (click)="confirmDelete()" [disabled]="deleteLoading()">
+          @if (deleteLoading()) {
+            <span class="spinner"></span> Deleting…
+          } @else {
+            <i class="pi pi-trash"></i> Delete Role
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}

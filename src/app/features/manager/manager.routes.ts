@@ -25,4 +25,19 @@ export const managerRoutes: Routes = [
     path: 'settings/sessions',
     loadComponent: () => import('../settings/pages/sessions/sessions.component').then(m => m.SessionsComponent),
   },
+  {
+    path: 'settings/roles',
+    loadComponent: () =>
+      import('./pages/roles-list/manager-roles-list.component').then(m => m.ManagerRolesListComponent),
+  },
+  {
+    path: 'settings/roles/:id',
+    loadComponent: () =>
+      import('./pages/role-detail/manager-role-detail.component').then(m => m.ManagerRoleDetailComponent),
+  },
+  {
+    path: 'settings/roles/:id/permissions',
+    loadComponent: () =>
+      import('./pages/role-permissions-view/manager-role-permissions-view.component').then(m => m.ManagerRolePermissionsViewComponent),
+  },
 ];

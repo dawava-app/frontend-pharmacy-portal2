@@ -1,9 +1,10 @@
-import { Component, inject, computed, signal, OnInit, HostListener } from '@angular/core';
+import { Component, inject, computed, signal, effect, OnInit, HostListener } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationEnd } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { ChatUnreadService } from '../../core/services/chat-unread.service';
 import { UserProfileService } from '../../shared/services/user-profile.service';
 import { NavItem } from '../../shared/models/nav.model';
 import { ADMIN_NAV, MANAGER_NAV, STAFF_NAV } from './shell.config';
@@ -20,6 +21,7 @@ export class ShellComponent implements OnInit {
   readonly auth           = inject(AuthService);
   readonly theme          = inject(ThemeService);
   readonly userProfileSvc = inject(UserProfileService);
+  readonly chatUnread     = inject(ChatUnreadService);
   private readonly router = inject(Router);
 
   sidebarOpen        = signal(false);
@@ -37,6 +39,16 @@ export class ShellComponent implements OnInit {
   );
 
   isDashboardRoute = computed(() => this.currentUrl().split('?')[0].split('#')[0].endsWith('/dashboard'));
+
+  // Refresh the Messages nav badge on every route change (admin has no
+  // Messages tab, so skip the calls entirely for that role) — display-only,
+  // does not touch chat page state or logic.
+  constructor() {
+    effect(() => {
+      this.currentUrl();
+      if (this.auth.userRole() !== 'admin') this.chatUnread.refresh();
+    });
+  }
 
   ngOnInit(): void {
     if (!this.userProfileSvc.profileLoaded()) {

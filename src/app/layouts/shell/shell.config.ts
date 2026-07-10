@@ -8,6 +8,7 @@ export const ADMIN_NAV: NavItem[] = [
   { label: 'Transactions',      icon: 'pi pi-credit-card',  route: '/admin/transactions' },
   { label: 'Reporting',         icon: 'pi pi-chart-bar',    route: '/admin/reports' },
   { label: 'Onboarding',        icon: 'pi pi-user-plus',    route: '/admin/onboarding' },
+  { label: 'Roles & Permissions', icon: 'pi pi-shield',      route: '/admin/roles' },
 ];
 
 export const MANAGER_NAV: NavItem[] = [

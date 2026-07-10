@@ -1,0 +1,118 @@
+<div class="page">
+  <div class="page-header">
+    <button class="btn-back" (click)="goBack()">
+      <i class="pi pi-arrow-left"></i>
+      Back to Roles
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-card">
+      <span class="spinner-brand"></span>
+      <span>Loading role permissions…</span>
+    </div>
+  }
+
+  @if (!loading() && error()) {
+    <div class="error-card">
+      <i class="pi pi-exclamation-circle"></i>
+      <div>
+        <p>{{ error() }}</p>
+        <button class="btn-retry" (click)="retry()">Try again</button>
+      </div>
+    </div>
+  }
+
+  @if (!loading() && !error() && role(); as r) {
+    <div class="role-summary">
+      <div class="role-summary__top">
+        <div class="role-title-row">
+          <h1 class="page-title">{{ r.name }}</h1>
+          @if (r.isSystemRole) {
+            <span class="status-badge badge-system"><i class="pi pi-lock"></i> System</span>
+          } @else if (!canManage()) {
+            <span class="status-badge badge-shared"><i class="pi pi-globe"></i> Shared</span>
+          }
+          <span class="status-badge" [class.badge-success]="r.isActive" [class.badge-danger]="!r.isActive">
+            {{ r.isActive ? 'Active' : 'Inactive' }}
+          </span>
+        </div>
+        <button
+          class="btn-manage"
+          [disabled]="!canManage()"
+          [title]="canManage() ? '' : 'You can only manage roles your pharmacy created'"
+          (click)="editPermissions()"
+        >
+          <i class="pi pi-sliders-h"></i>
+          Manage Permissions
+        </button>
+      </div>
+      <p class="page-sub">{{ r.description || 'No description provided.' }}</p>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+          <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <input
+          class="search-input"
+          type="text"
+          placeholder="Search granted permissions…"
+          [value]="search()"
+          (input)="onSearch($any($event.target).value)"
+        />
+      </div>
+      <div class="selection-summary">
+        <i class="pi pi-shield"></i>
+        {{ totalPermissions() }} permission{{ totalPermissions() !== 1 ? 's' : '' }} granted
+      </div>
+    </div>
+
+    @if (totalPermissions() === 0) {
+      <div class="empty-state">
+        <i class="pi pi-shield"></i>
+        <span>This role has no permissions assigned yet.</span>
+        @if (canManage()) {
+          <button class="btn-brand-outline" (click)="editPermissions()">
+            <i class="pi pi-plus"></i> Assign Permissions
+          </button>
+        }
+      </div>
+    } @else {
+      <div class="module-list">
+        @for (group of groupedModules(); track group.module) {
+          <div class="module-card">
+            <div class="module-card__header">
+              <span class="module-icon"><i class="pi pi-folder"></i></span>
+              <span class="module-name">{{ formatModuleName(group.module) }}</span>
+              <span class="module-count">{{ group.permissions.length }}</span>
+            </div>
+            <div class="module-card__body">
+              @for (perm of group.permissions; track perm.id) {
+                <div class="permission-chip">
+                  <i class="pi pi-check-circle"></i>
+                  <div class="permission-info">
+                    <span class="permission-action">{{ formatAction(perm.action) }}</span>
+                    <span class="permission-name">{{ perm.name }}</span>
+                    @if (perm.description) {
+                      <span class="permission-desc">{{ perm.description }}</span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (groupedModules().length === 0) {
+          <div class="empty-state">
+            <i class="pi pi-search"></i>
+            <span>No granted permissions match your search.</span>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

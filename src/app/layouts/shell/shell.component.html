@@ -19,7 +19,10 @@
       @for (item of navItems(); track item.route) {
         <a [routerLink]="item.route" routerLinkActive="active" class="nav-item">
           <i [class]="item.icon"></i>
-          <span>{{ item.label }}</span>
+          <span class="nav-item-label">{{ item.label }}</span>
+          @if (item.route.endsWith('/messages') && chatUnread.totalUnread() > 0) {
+            <span class="nav-badge">{{ chatUnread.totalUnread() > 99 ? '99+' : chatUnread.totalUnread() }}</span>
+          }
         </a>
       }
     </nav>

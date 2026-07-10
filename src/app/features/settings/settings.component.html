@@ -32,6 +32,13 @@
       <span>Sessions</span>
       <i class="pi pi-arrow-right nav-arrow"></i>
     </button>
+    @if (isManager()) {
+      <button class="nav-tab sessions-link" (click)="goToRoles()">
+        <i class="pi pi-sliders-h"></i>
+        <span>Roles &amp; Permissions</span>
+        <i class="pi pi-arrow-right nav-arrow"></i>
+      </button>
+    }
   </nav>
 
   <!-- Right content -->

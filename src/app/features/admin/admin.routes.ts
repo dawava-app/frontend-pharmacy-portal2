@@ -24,4 +24,19 @@ export const adminRoutes: Routes = [
     loadComponent: () =>
       import('./pages/application-detail/application-detail.component').then(m => m.ApplicationDetailComponent),
   },
+  {
+    path: 'roles',
+    loadComponent: () =>
+      import('./pages/roles-list/roles-list.component').then(m => m.RolesListComponent),
+  },
+  {
+    path: 'roles/:id',
+    loadComponent: () =>
+      import('./pages/role-detail/role-detail.component').then(m => m.RoleDetailComponent),
+  },
+  {
+    path: 'roles/:id/permissions',
+    loadComponent: () =>
+      import('./pages/role-permissions-view/role-permissions-view.component').then(m => m.RolePermissionsViewComponent),
+  },
 ];

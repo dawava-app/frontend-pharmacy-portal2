@@ -110,6 +110,7 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
   private readonly originalSenderFetchAttempted  = new Set<string>();
   private readonly attachmentUrlFetchAttempted   = new Set<string>();
   private readonly failedProfileImageIds         = new Set<string>();
+  private readonly attachmentImageRetries        = new Map<string, number>();
   // Voice message durations, keyed by externalFileId — session-local only (not sent to
   // the backend), since the real duration is re-measured from the <audio> element on playback.
   private readonly recordedDurations             = new Map<string, number>();
@@ -188,9 +189,32 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
           list.forEach(c => {
             this.fetchUnreadCount(c._id);
             this.preloadConvProfiles(c);
+            this.enrichLastMessageIfNeeded(c);
           });
         },
         error: () => this.loading.set(false),
+      });
+  }
+
+  // The conversations-list endpoint's lastMessage summary can omit
+  // attachments for attachment-only messages (no text content) — refetch the
+  // real last message from the messages endpoint so the preview icon/label
+  // (📷/🎤/📄) doesn't fall back to "No messages yet".
+  private enrichLastMessageIfNeeded(conv: Conversation): void {
+    const last = conv.lastMessage;
+    if (!last || last.content || last.attachments?.length) return;
+
+    this.api.listMessages(conv._id, { limit: 1 })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: msgs => {
+          if (!msgs?.length) return;
+          const latest = msgs.reduce((a, b) => new Date(a.createdAt) > new Date(b.createdAt) ? a : b);
+          this.conversations.update(list =>
+            list.map(c => c._id === conv._id ? { ...c, lastMessage: latest } : c)
+          );
+        },
+        error: () => {},
       });
   }
 
@@ -357,7 +381,7 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
       content: text,
       replyTo,
       attachments: attachment
-        ? [{ externalFileId: attachment.externalFileId, label: attachment.label, metadata: {} }]
+        ? [{ externalFileId: attachment.externalFileId, label: attachment.label, metadata: { mimeType: attachment.mimeType } }]
         : undefined,
       metadata: {
         clientId,
@@ -380,7 +404,7 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.api.sendMessage(sel._id, {
       content: text,
       ...(replyTo    ? { replyTo }    : {}),
-      ...(attachment ? { attachments: [{ externalFileId: attachment.externalFileId, label: attachment.label, metadata: {} }] } : {}),
+      ...(attachment ? { attachments: [{ externalFileId: attachment.externalFileId, label: attachment.label, metadata: { mimeType: attachment.mimeType } }] } : {}),
       metadata: {
         clientId,
         staffId:   user?.id,
@@ -489,6 +513,24 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
     return this.resolveFileUrl(att.externalFileId);
   }
 
+  // A cached URL can still fail to load (e.g. it was resolved while the file
+  // was still status:"Staged"). Re-querying the same cached URL wouldn't
+  // help — evict it and re-query the file service so a since-committed file
+  // is picked up, bounded so a genuinely broken/missing file doesn't retry
+  // forever.
+  onAttachmentImageError(att: Attachment): void {
+    const fileId   = att.externalFileId;
+    const attempts = this.attachmentImageRetries.get(fileId) ?? 0;
+    if (attempts >= 5) return;
+    this.attachmentImageRetries.set(fileId, attempts + 1);
+
+    this.attachmentUrls.update(urls => {
+      const { [fileId]: _removed, ...rest } = urls;
+      return rest;
+    });
+    setTimeout(() => this.fetchAttachmentUrl(fileId, 2), 1500);
+  }
+
   // Reuses the same signed-URL cache/fetch as chat attachments — a profile
   // photo's imageId is just another file id resolved via the same file service.
   private resolveFileUrl(fileId: string): string | null {
@@ -498,18 +540,32 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
     return null;
   }
 
-  private fetchAttachmentUrl(externalFileId: string): void {
-    if (this.attachmentUrlFetchAttempted.has(externalFileId)) return;
-    this.attachmentUrlFetchAttempted.add(externalFileId);
+  // Right after upload, getFile() can return the file while it's still
+  // status:"Staged" (a fileLink may or may not be present, but it isn't the
+  // real committed object yet) — we were caching that first response and
+  // never asking again, so the page never discovered the file had since
+  // become "Committed". Poll until status is Committed (or unspecified, for
+  // any response shape that doesn't report one) instead of stopping at the
+  // first response that merely has a fileLink.
+  private fetchAttachmentUrl(externalFileId: string, attempt = 1): void {
+    if (attempt === 1) {
+      if (this.attachmentUrlFetchAttempted.has(externalFileId)) return;
+      this.attachmentUrlFetchAttempted.add(externalFileId);
+    }
     this.fileService.getFile(externalFileId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: res => {
-          if (res.fileLink) {
+          const isCommitted = !res.status || res.status.toLowerCase() === 'committed';
+          if (res.fileLink && isCommitted) {
             this.attachmentUrls.update(urls => ({ ...urls, [externalFileId]: res.fileLink }));
+          } else if (attempt < 8) {
+            setTimeout(() => this.fetchAttachmentUrl(externalFileId, attempt + 1), attempt * 1200);
           }
         },
-        error: () => {},
+        error: () => {
+          if (attempt < 8) setTimeout(() => this.fetchAttachmentUrl(externalFileId, attempt + 1), attempt * 1200);
+        },
       });
   }
 
@@ -1136,6 +1192,25 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
   getConvInitials(conv: Conversation): string {
     const name = this.getConvName(conv);
     return name.split(/[\s_\-@.]/).map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'C';
+  }
+
+  // WhatsApp-style last-message preview: attachment-only messages (no text
+  // content) render as an icon + label instead of falling through to
+  // "No messages yet", since lastMessage?.content is empty for those.
+  getLastMessagePreview(conv: Conversation): string {
+    const last = conv.lastMessage;
+    if (!last) return 'No messages yet';
+    if (last.content) return last.content;
+
+    const att = last.attachments?.[0];
+    if (att) {
+      switch (this.attachmentKind(att)) {
+        case 'image': return '📷 Photo';
+        case 'audio': return '🎤 Voice message';
+        default:      return '📄 ' + (att.label || 'Document');
+      }
+    }
+    return 'No messages yet';
   }
 
   // Conversation avatar photo (used in both the sidebar list and the thread
