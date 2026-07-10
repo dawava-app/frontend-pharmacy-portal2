@@ -528,6 +528,7 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
       const { [fileId]: _removed, ...rest } = urls;
       return rest;
     });
+    this.fileService.invalidateCache(fileId);
     setTimeout(() => this.fetchAttachmentUrl(fileId, 2), 1500);
   }
 
@@ -555,17 +556,28 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.fileService.getFile(externalFileId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: res => {
+        // Deferred to a microtask: getFile() replays a cached result
+        // synchronously on a cache hit, and this can be triggered from a
+        // template getter (e.g. getConvAvatarUrl) — writing to a signal
+        // synchronously in that situation is disallowed mid-render (NG0600).
+        next: res => queueMicrotask(() => {
           const isCommitted = !res.status || res.status.toLowerCase() === 'committed';
           if (res.fileLink && isCommitted) {
             this.attachmentUrls.update(urls => ({ ...urls, [externalFileId]: res.fileLink }));
           } else if (attempt < 8) {
+            // getFile() caches by fileId — without invalidating first, the
+            // retry would just replay this same stale (not-yet-committed)
+            // response instead of re-checking the backend.
+            this.fileService.invalidateCache(externalFileId);
             setTimeout(() => this.fetchAttachmentUrl(externalFileId, attempt + 1), attempt * 1200);
           }
-        },
-        error: () => {
-          if (attempt < 8) setTimeout(() => this.fetchAttachmentUrl(externalFileId, attempt + 1), attempt * 1200);
-        },
+        }),
+        error: () => queueMicrotask(() => {
+          if (attempt < 8) {
+            this.fileService.invalidateCache(externalFileId);
+            setTimeout(() => this.fetchAttachmentUrl(externalFileId, attempt + 1), attempt * 1200);
+          }
+        }),
       });
   }
 
@@ -1224,10 +1236,28 @@ export class ChatPageComponent implements OnInit, AfterViewChecked, OnDestroy {
     return this.resolveFileUrl(imageId);
   }
 
+  // Mirrors onAttachmentImageError's bounded evict-and-retry: a cached URL
+  // can go stale (e.g. a revoked blob URL) without the component knowing —
+  // retry a bounded number of times before giving up, instead of blacklisting
+  // permanently after a single failure.
   onConvAvatarError(conv: Conversation): void {
     const other = this.getOtherParticipant(conv);
     const imageId = other ? this.profileImageIds()[other.externalUserId] : undefined;
-    if (imageId) this.failedProfileImageIds.add(imageId);
+    if (!imageId) return;
+
+    const attempts = this.attachmentImageRetries.get(imageId) ?? 0;
+    if (attempts >= 5) {
+      this.failedProfileImageIds.add(imageId);
+      return;
+    }
+    this.attachmentImageRetries.set(imageId, attempts + 1);
+
+    this.attachmentUrls.update(urls => {
+      const { [imageId]: _removed, ...rest } = urls;
+      return rest;
+    });
+    this.fileService.invalidateCache(imageId);
+    setTimeout(() => this.fetchAttachmentUrl(imageId, 2), 1500);
   }
 
   getSelectedConvAvatarUrl(): string | null {

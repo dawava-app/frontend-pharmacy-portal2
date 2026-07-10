@@ -92,6 +92,10 @@ export class ManagerRolesListComponent implements OnInit {
     this.router.navigate(['/manager/settings/roles', role.id, 'permissions']);
   }
 
+  goBack(): void {
+    this.router.navigate(['/manager/settings']);
+  }
+
   /** A manager may only edit/delete/manage permissions for roles their own
    *  pharmacy created — system roles and roles belonging to another pharmacy
    *  (or with no pharmacy at all, e.g. global roles created by an admin) are

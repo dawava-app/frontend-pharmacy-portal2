@@ -1,4 +1,4 @@
-import { Component, inject, computed, signal, effect, OnInit, HostListener } from '@angular/core';
+import { Component, inject, computed, signal, OnInit, HostListener } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationEnd } from '@angular/router';
 import { filter, map } from 'rxjs';
@@ -40,14 +40,10 @@ export class ShellComponent implements OnInit {
 
   isDashboardRoute = computed(() => this.currentUrl().split('?')[0].split('#')[0].endsWith('/dashboard'));
 
-  // Refresh the Messages nav badge on every route change (admin has no
-  // Messages tab, so skip the calls entirely for that role) — display-only,
-  // does not touch chat page state or logic.
+  // Messages nav badge refresh disabled: per-conversation unread-count fan-out
+  // was firing N+1 requests on every route change. Re-enable once there's a
+  // single aggregate endpoint for total unread count.
   constructor() {
-    effect(() => {
-      this.currentUrl();
-      if (this.auth.userRole() !== 'admin') this.chatUnread.refresh();
-    });
   }
 
   ngOnInit(): void {

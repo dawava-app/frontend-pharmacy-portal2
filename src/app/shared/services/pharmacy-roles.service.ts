@@ -13,6 +13,17 @@ function unwrap<T>(res: Wrapped<T>): T {
   return (res as { success?: boolean; data?: T }).data ?? (res as T);
 }
 
+// The backend 500s on an explicit empty permissionIds array (confirmed via
+// Swagger: omitting the field entirely succeeds, sending [] doesn't) — drop
+// the key rather than send an empty array.
+function stripEmptyPermissionIds<T extends { permissionIds: string[] }>(
+  body: T,
+): Omit<T, 'permissionIds'> | T {
+  if (body.permissionIds.length > 0) return body;
+  const { permissionIds: _omit, ...rest } = body;
+  return rest;
+}
+
 /** Manager-scoped counterpart to RolesService, backed by /api/pharmacy/roles*
  *  instead of /api/admin/roles*. Unlike the admin endpoints, create/update here
  *  take the full permission list in the same call — there are no separate
@@ -34,11 +45,11 @@ export class PharmacyRolesService {
   }
 
   createRole(body: CreatePharmacyRoleRequest): Observable<Role> {
-    return this.http.post<Wrapped<Role>>(`${this.BASE}/pharmacy/roles`, body).pipe(map(unwrap));
+    return this.http.post<Wrapped<Role>>(`${this.BASE}/pharmacy/roles`, stripEmptyPermissionIds(body)).pipe(map(unwrap));
   }
 
   updateRole(roleId: string, body: UpdatePharmacyRoleRequest): Observable<Role> {
-    return this.http.put<Wrapped<Role>>(`${this.BASE}/pharmacy/roles/${roleId}`, body).pipe(map(unwrap));
+    return this.http.put<Wrapped<Role>>(`${this.BASE}/pharmacy/roles/${roleId}`, stripEmptyPermissionIds(body)).pipe(map(unwrap));
   }
 
   deleteRole(roleId: string): Observable<unknown> {

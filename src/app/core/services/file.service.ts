@@ -97,7 +97,9 @@ export class FileService {
     );
   }
 
-  private invalidateCache(fileId: string): void {
+  // Public so callers polling for a not-yet-committed file (e.g. right after
+  // upload) can force the next getFile() past the cached, stale response.
+  invalidateCache(fileId: string): void {
     const objectUrl = this.objectUrls.get(fileId);
     if (objectUrl) {
       URL.revokeObjectURL(objectUrl);
