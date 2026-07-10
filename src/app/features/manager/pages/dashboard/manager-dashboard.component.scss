@@ -33,6 +33,18 @@
   overflow: hidden;
 
   &.card-red { background: #fef2f2; border-color: #fecaca; }
+
+  &.skeleton-card {
+    height: 92px;
+    background: linear-gradient(90deg, var(--color-bg-card) 25%, var(--color-bg-surface-secondary) 37%, var(--color-bg-card) 63%);
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease infinite;
+  }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
 }
 
 .card-icon-wrap {
@@ -53,7 +65,8 @@
 
 .card-change {
   display: flex; align-items: center; gap: 4px;
-  font-size: 11px; color: var(--color-success-text);
+  font-size: 11px; color: var(--color-danger-text);
+  &.up { color: var(--color-success-text); }
   &.up i { transform: none; }
   i { font-size: 10px; }
 }
