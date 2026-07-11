@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged, Subject, switchMap, tap, catchError, of } from 'rxjs';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { InventoryService } from '../../../../shared/services/inventory.service';
+import { UserProfileService } from '../../../../shared/services/user-profile.service';
 import {
   InventorySummary,
   InventoryItem,
@@ -11,6 +12,13 @@ import {
   STOCK_STATUS_LABEL,
   statusBadgeClass,
 } from '../../../../shared/models/inventory.model';
+import { exportInventoryPdf, exportInventoryExcel } from '../../../../shared/utils/inventory-export.util';
+
+/** Items are exported using the current filters but ignoring pagination, so
+ *  the report always reflects everything the filters match. Backend is asked
+ *  for a single large page rather than looping — bump this if a pharmacy's
+ *  catalog ever exceeds it. */
+const EXPORT_PAGE_SIZE = 5000;
 
 const STATUS_OPTIONS: { value: number | ''; label: string }[] = [
   { value: '', label: 'All Availability Status' },
@@ -30,9 +38,13 @@ const STATUS_OPTIONS: { value: number | ''; label: string }[] = [
 export class StockTabComponent {
   private readonly auth   = inject(AuthService);
   private readonly inventorySvc = inject(InventoryService);
+  private readonly userProfileSvc = inject(UserProfileService);
 
   readonly statusOptions = STATUS_OPTIONS;
   readonly statusBadgeClass = statusBadgeClass;
+
+  showExportMenu = signal(false);
+  exporting      = signal<'pdf' | 'excel' | null>(null);
 
   summary       = signal<InventorySummary | null>(null);
   summaryLoading = signal(true);
@@ -148,4 +160,58 @@ export class StockTabComponent {
   }
 
   trackByVariant(_: number, item: InventoryItem): string { return item.variantId; }
+
+  toggleExportMenu(): void {
+    this.showExportMenu.set(!this.showExportMenu());
+  }
+
+  private currentFiltersSummary(): string {
+    const parts: string[] = [];
+    const statusLabel = this.status() === '' ? null : STOCK_STATUS_LABEL[Number(this.status())];
+    if (statusLabel) parts.push(`Status: ${statusLabel}`);
+    if (this.search()) parts.push(`Search: "${this.search()}"`);
+    if (this.excludeOutOfStock()) parts.push('Excluding out-of-stock');
+    return parts.length ? `Filters — ${parts.join(' · ')}` : 'All items, no filters applied';
+  }
+
+  /** Fetches every item matching the current filters (ignoring the on-screen
+   *  page) so exports always cover the full filtered result set. */
+  private fetchAllFilteredItems() {
+    const branchId = this.auth.currentBranchId();
+    if (!branchId) return of(null);
+    return this.inventorySvc.getItems({
+      branchId,
+      status: this.status() === '' ? undefined : Number(this.status()),
+      search: this.search() || undefined,
+      excludeOutOfStock: this.excludeOutOfStock() || undefined,
+      page: 1,
+      pageSize: EXPORT_PAGE_SIZE,
+    }).pipe(catchError(() => of(null)));
+  }
+
+  exportAsPdf(): void {
+    this.showExportMenu.set(false);
+    this.exporting.set('pdf');
+    this.fetchAllFilteredItems().subscribe(res => {
+      this.exporting.set(null);
+      if (!res) { this.error.set('Failed to export inventory. Please try again.'); return; }
+      exportInventoryPdf(res.items ?? [], {
+        branchName: this.userProfileSvc.branchName(),
+        filtersSummary: this.currentFiltersSummary(),
+      });
+    });
+  }
+
+  exportAsExcel(): void {
+    this.showExportMenu.set(false);
+    this.exporting.set('excel');
+    this.fetchAllFilteredItems().subscribe(res => {
+      this.exporting.set(null);
+      if (!res) { this.error.set('Failed to export inventory. Please try again.'); return; }
+      exportInventoryExcel(res.items ?? [], {
+        branchName: this.userProfileSvc.branchName(),
+        filtersSummary: this.currentFiltersSummary(),
+      });
+    });
+  }
 }

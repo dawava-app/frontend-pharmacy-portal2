@@ -19,8 +19,12 @@
     "@angular/platform-browser": "^21.2.0",
     "@angular/router": "^21.2.0",
     "@tailwindcss/postcss": "^4.3.1",
+    "apexcharts": "^5.16.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "jwt-decode": "^4.0.0",
     "leaflet": "^1.9.4",
+    "ng-apexcharts": "^2.4.0",
     "postcss": "^8.5.15",
     "primeicons": "^7.0.0",
     "primeng": "^21.1.9",
@@ -28,6 +32,7 @@
     "socket.io-client": "^4.8.3",
     "tailwindcss": "^4.3.1",
     "tslib": "^2.3.0",
+    "xlsx": "^0.18.5",
     "zone.js": "~0.15.0"
   },
   "devDependencies": {

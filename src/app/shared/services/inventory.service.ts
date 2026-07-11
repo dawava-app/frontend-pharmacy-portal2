@@ -11,6 +11,8 @@ import {
   InventoryTransactionsStats,
   InventoryTransactionsStatsQuery,
   InventoryTransactionsExportQuery,
+  DashboardAnalytics,
+  DashboardAnalyticsQuery,
 } from '../models/inventory.model';
 
 /** Builds an HttpParams instance, skipping null/undefined/empty-string values
@@ -50,6 +52,12 @@ export class InventoryService {
 
   getTransactionsStats(query: InventoryTransactionsStatsQuery): Observable<InventoryTransactionsStats> {
     return this.http.get<InventoryTransactionsStats>(`${this.base}/transactions/stats`, {
+      params: buildParams({ ...query }),
+    });
+  }
+
+  getAnalytics(query: DashboardAnalyticsQuery): Observable<DashboardAnalytics> {
+    return this.http.get<DashboardAnalytics>(`${this.base}/analytics`, {
       params: buildParams({ ...query }),
     });
   }

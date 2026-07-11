@@ -1,0 +1,179 @@
+<div class="page" [class.page--with-savebar]="role() && !loading() && !error()">
+  <div class="page-header">
+    <button class="btn-back" (click)="goBack()">
+      <i class="pi pi-arrow-left"></i>
+      Back to Roles
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-card">
+      <span class="spinner-brand"></span>
+      <span>Loading role details…</span>
+    </div>
+  }
+
+  @if (!loading() && error()) {
+    <div class="error-card">
+      <i class="pi pi-exclamation-circle"></i>
+      <div>
+        <p>{{ error() }}</p>
+        <button class="btn-retry" (click)="retry()">Try again</button>
+      </div>
+    </div>
+  }
+
+  @if (!loading() && !error() && role(); as r) {
+    <div class="role-summary">
+      <div class="role-title-row">
+        <h1 class="page-title">{{ r.name }}</h1>
+        @if (r.isSystemRole) {
+          <span class="status-badge badge-system"><i class="pi pi-lock"></i> System</span>
+        }
+        <span class="status-badge" [class.badge-success]="r.isActive" [class.badge-danger]="!r.isActive">
+          {{ r.isActive ? 'Active' : 'Inactive' }}
+        </span>
+      </div>
+      <p class="page-sub">{{ r.description || 'No description provided.' }}</p>
+    </div>
+
+    <div class="detail-layout">
+      <!-- Quick-jump module rail: sticky sidebar on desktop, horizontal chip strip on mobile/tablet -->
+      <aside class="module-nav">
+        <span class="module-nav__title">Modules</span>
+        <div class="module-nav__list">
+          @for (nav of navModules(); track nav.module) {
+            <button
+              type="button"
+              class="module-nav__item"
+              [class.module-nav__item--granted]="countSelectedInModule(nav.permissions) > 0"
+              (click)="jumpToModule(nav.module)"
+            >
+              <span class="module-nav__dot"></span>
+              <span class="module-nav__label">{{ formatModuleName(nav.module) }}</span>
+              <span class="module-nav__count">{{ countSelectedInModule(nav.permissions) }}/{{ nav.permissions.length }}</span>
+            </button>
+          }
+        </div>
+      </aside>
+
+      <div class="detail-main">
+        <div class="toolbar">
+          <div class="search-wrap">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+              <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <input
+              class="search-input"
+              type="text"
+              placeholder="Search permissions by module or action…"
+              [value]="search()"
+              (input)="onSearch($any($event.target).value)"
+            />
+          </div>
+          <div class="expand-controls">
+            <button type="button" class="btn-text" (click)="expandAll()">Expand all</button>
+            <span class="expand-controls__sep">·</span>
+            <button type="button" class="btn-text" (click)="collapseAll()">Collapse all</button>
+          </div>
+          <div class="selection-summary">
+            <i class="pi pi-key"></i>
+            {{ selectedIds().size }} permission{{ selectedIds().size !== 1 ? 's' : '' }} selected
+          </div>
+        </div>
+
+        @if (saveError()) {
+          <div class="alert alert--error">
+            <i class="pi pi-exclamation-circle"></i>
+            {{ saveError() }}
+          </div>
+        }
+
+        @if (saveSuccess()) {
+          <div class="alert alert--success">
+            <i class="pi pi-check-circle"></i>
+            {{ saveSuccess() }}
+          </div>
+        }
+
+        <div class="module-list">
+          @for (group of groupedModules(); track group.module) {
+            <div class="module-card" [id]="moduleAnchorId(group.module)">
+              <div class="module-card__header">
+                <label class="module-checkbox-label">
+                  <input
+                    type="checkbox"
+                    class="module-checkbox"
+                    [checked]="isModuleFullySelected(group.permissions)"
+                    [indeterminate]="isModulePartiallySelected(group.permissions)"
+                    (change)="toggleModule(group.permissions)"
+                  />
+                </label>
+
+                <button type="button" class="module-toggle" (click)="toggleExpand(group.module)">
+                  <span class="module-name">{{ formatModuleName(group.module) }}</span>
+                  <span class="module-count">{{ countSelectedInModule(group.permissions) }}/{{ group.permissions.length }}</span>
+                  <i class="pi module-chevron" [class.pi-chevron-down]="isExpanded(group.module)" [class.pi-chevron-right]="!isExpanded(group.module)"></i>
+                </button>
+              </div>
+
+              @if (isExpanded(group.module)) {
+                <div class="module-card__body">
+                  @for (perm of group.permissions; track perm.id) {
+                    <label class="permission-row">
+                      <input
+                        type="checkbox"
+                        [checked]="isChecked(perm.id)"
+                        (change)="toggle(perm.id)"
+                      />
+                      <div class="permission-info">
+                        <span class="permission-action">{{ formatAction(perm.action) }}</span>
+                        <span class="permission-name">{{ perm.name }}</span>
+                        @if (perm.description) {
+                          <span class="permission-desc">{{ perm.description }}</span>
+                        }
+                      </div>
+                    </label>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          @if (groupedModules().length === 0) {
+            <div class="empty-state">
+              <i class="pi pi-search"></i>
+              <span>No permissions match your search.</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+@if (!loading() && !error() && role()) {
+  <div class="save-bar" [class.save-bar--visible]="isDirty()">
+    <span class="save-bar__info">
+      @if (isDirty()) {
+        <i class="pi pi-info-circle"></i>
+        {{ pendingAddCount() }} to add, {{ pendingRemoveCount() }} to remove
+      } @else {
+        No pending changes
+      }
+    </span>
+    <div class="save-bar__actions">
+      <button class="btn-cancel" (click)="reset()" [disabled]="!isDirty() || saving()">
+        Reset
+      </button>
+      <button class="btn-brand" (click)="save()" [disabled]="!isDirty() || saving()">
+        @if (saving()) {
+          <span class="spinner"></span> Saving…
+        } @else {
+          <i class="pi pi-check"></i> Save Changes
+        }
+      </button>
+    </div>
+  </div>
+}

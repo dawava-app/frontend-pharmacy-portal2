@@ -19,7 +19,10 @@
       @for (item of navItems(); track item.route) {
         <a [routerLink]="item.route" routerLinkActive="active" class="nav-item">
           <i [class]="item.icon"></i>
-          <span>{{ item.label }}</span>
+          <span class="nav-item-label">{{ item.label }}</span>
+          @if (item.route.endsWith('/messages') && chatUnread.totalUnread() > 0) {
+            <span class="nav-badge">{{ chatUnread.totalUnread() > 99 ? '99+' : chatUnread.totalUnread() }}</span>
+          }
         </a>
       }
     </nav>
@@ -46,12 +49,6 @@
       <button class="hamburger" (click)="toggleSidebar()">
         <i class="pi pi-bars"></i>
       </button>
-
-      <!-- Search -->
-      <div class="search-box">
-        <i class="pi pi-search search-icon"></i>
-        <input type="text" placeholder="Search medicines, orders…"/>
-      </div>
 
       <!-- Right actions -->
       <div class="topbar-right">

@@ -3,25 +3,10 @@
     <div class="breadcrumb">
       <span>Inventory</span>
       <i class="pi pi-chevron-right"></i>
-      <span class="active">{{ activeTab() === 'stock' ? 'Stock Management' : 'Transaction History' }}</span>
+      <span class="active">Stock Management</span>
     </div>
     <h1 class="page-title">Inventory</h1>
   </div>
 </div>
 
-<div class="tabs">
-  <button class="tab-btn" [class.active]="activeTab() === 'stock'" (click)="setTab('stock')">
-    <i class="pi pi-box"></i>
-    Stock
-  </button>
-  <button class="tab-btn" [class.active]="activeTab() === 'transactions'" (click)="setTab('transactions')">
-    <i class="pi pi-history"></i>
-    Transactions
-  </button>
-</div>
-
-@if (activeTab() === 'stock') {
-  <app-inventory-stock-tab/>
-} @else {
-  <app-inventory-transactions-tab/>
-}
+<app-inventory-stock-tab/>

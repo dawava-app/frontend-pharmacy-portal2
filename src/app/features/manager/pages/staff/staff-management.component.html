@@ -1,0 +1,691 @@
+<!-- Header -->
+<div class="page-header">
+  <div>
+    <div class="breadcrumb">
+      <span>OVERVIEW</span>
+      <span class="sep">•</span>
+      <span class="active">STAFF MANAGEMENT</span>
+    </div>
+    <h2 class="page-title">Staff Management</h2>
+    <p class="page-subtitle text-slate-500 text-sm mt-1">Manage pharmacy staff accounts, roles, and access permissions.</p>
+  </div>
+  <button class="btn-brand" (click)="openAddModal()">
+    <i class="pi pi-user-plus mr-1"></i> Add New Staff
+  </button>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid mt-6">
+  <!-- Total Staff Card -->
+  <div class="stats-card">
+    <div class="stats-card-content">
+      <div>
+        <p class="stats-label">Total Pharmacy Staff</p>
+        <h3 class="stats-value">{{ totalPharmacyStaff() }}</h3>
+      </div>
+      <div class="stats-icon bg-teal-50 text-teal-600">
+        <i class="pi pi-users text-xl"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Staff Card -->
+  <div class="stats-card active-border">
+    <div class="stats-card-content">
+      <div>
+        <p class="stats-label">Branch Active Staff</p>
+        <h3 class="stats-value">{{ activeStaff() }}</h3>
+      </div>
+      <div class="stats-icon bg-teal-50 text-teal-500">
+        <i class="pi pi-user text-xl"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inactive Staff Card -->
+  <div class="stats-card inactive-border">
+    <div class="stats-card-content">
+      <div>
+        <p class="stats-label">Branch Inactive Staff</p>
+        <h3 class="stats-value">{{ inactiveStaff() }}</h3>
+      </div>
+      <div class="stats-icon bg-red-50 text-red-500">
+        <i class="pi pi-user-minus text-xl"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter & Table Card -->
+<div class="main-card mt-8">
+  <!-- Card Tabs -->
+  <div class="card-tabs">
+    <button 
+      class="tab-btn" 
+      [class.active]="activeTab() === 'assignments'"
+      (click)="activeTab.set('assignments'); currentPage.set(1)"
+    >
+      Active Staff ({{ totalCount() }})
+    </button>
+    <button 
+      class="tab-btn" 
+      [class.active]="activeTab() === 'invitations'"
+      (click)="activeTab.set('invitations')"
+    >
+      Pending Invitations ({{ invitations().length }})
+    </button>
+  </div>
+
+  <!-- Filter Bar (Only shown for active staff assignments) -->
+  <div class="filter-bar" *ngIf="activeTab() === 'assignments'">
+    <div class="search-input-wrapper">
+      <i class="pi pi-search search-icon-input"></i>
+      <input 
+        type="text" 
+        class="filter-search-input" 
+        placeholder="Search staff by name, email or ID..."
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event); currentPage.set(1)"
+      />
+    </div>
+
+    <div class="filter-actions">
+      <select 
+        class="filter-select"
+        [ngModel]="selectedRoleId()"
+        (ngModelChange)="selectedRoleId.set($event); currentPage.set(1)"
+      >
+        <option value="">All Roles</option>
+        <option *ngFor="let role of rolesList()" [value]="role.id">{{ role.name }}</option>
+      </select>
+
+      <select 
+        class="filter-select"
+        [ngModel]="selectedStatus()"
+        (ngModelChange)="selectedStatus.set($event); currentPage.set(1)"
+      >
+        <option value="">All Status</option>
+        <option value="Active">Active Only</option>
+        <option value="Inactive">Inactive Only</option>
+      </select>
+
+      <button class="btn-reset" *ngIf="searchQuery() || selectedRoleId() || selectedStatus()" (click)="resetFilters()">
+        Clear Filters
+      </button>
+    </div>
+  </div>
+
+  <!-- Content Loader -->
+  <div class="loading-overlay" *ngIf="loading()">
+    <i class="pi pi-spin pi-spinner text-3xl text-teal-600"></i>
+    <span class="ml-2 text-slate-600">Loading data...</span>
+  </div>
+
+  <!-- Active Staff Assignments Table -->
+  <div class="table-container" *ngIf="activeTab() === 'assignments' && !loading()">
+    <table class="staff-table" *ngIf="assignments().length > 0; else noAssignments">
+      <thead>
+        <tr>
+          <th>Profile Info</th>
+          <th>Phone Number</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Join Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let a of assignments()">
+          <td>
+            <div class="profile-info-cell cursor-pointer" (click)="openUserDetailModal(a)">
+              <ng-container *ngIf="a.avatarUrl; else noAvatar">
+                <img [src]="a.avatarUrl" alt="Avatar" class="avatar-img" />
+              </ng-container>
+              <ng-template #noAvatar>
+                <div 
+                  class="avatar-initials text-white" 
+                  [style.background-color]="getAvatarColor(a.fullName || a.username)"
+                >
+                  {{ getInitials(a.fullName || a.username) }}
+                </div>
+              </ng-template>
+              <div>
+                <h4 class="staff-full-name">{{ a.fullName || a.username }}</h4>
+                <p class="staff-email-sub">{{ a.email || 'no-email@pharmalogix.com' }}</p>
+              </div>
+            </div>
+          </td>
+          <td class="staff-phone-cell">{{ a.phone || '-' }}</td>
+          <td>
+            <span class="role-badge cursor-pointer" [class]="a.roleName.toLowerCase().replace(' ', '-')" (click)="openRoleDetailModal(a.roleId, $event)">
+              {{ a.roleName }}
+            </span>
+          </td>
+          <td>
+            <span class="status-bullet-container">
+              <span class="status-bullet" [class.active-bullet]="a.isActive" [class.inactive-bullet]="!a.isActive"></span>
+              <span class="status-text" [class.text-active]="a.isActive" [class.text-inactive]="!a.isActive">
+                {{ a.isActive ? 'Active' : 'Inactive' }}
+              </span>
+            </span>
+          </td>
+          <td class="staff-join-cell">{{ formatDate(a.assignedAt) }}</td>
+          <td>
+            <div class="action-buttons">
+              <!-- Edit Role button -->
+              <button 
+                class="action-btn text-slate-500 hover:text-teal-600" 
+                title="Edit Role"
+                *ngIf="a.isActive"
+                (click)="openEditModal(a, $event)"
+              >
+                <i class="pi pi-user-edit"></i>
+              </button>
+              
+              <!-- Deactivate (Active) or Activate (Inactive) button -->
+              <button 
+                *ngIf="a.isActive"
+                class="action-btn text-slate-500 hover:text-red-500" 
+                title="Deactivate Staff"
+                (click)="openRevokeModal(a, $event)"
+              >
+                <i class="pi pi-ban"></i>
+              </button>
+              <button 
+                *ngIf="!a.isActive"
+                class="action-btn text-slate-500 hover:text-teal-600" 
+                title="Re-activate Staff"
+                (click)="handleActivateAssignment(a, $event)"
+              >
+                <i class="pi pi-check-circle"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <ng-template #noAssignments>
+      <div class="empty-state">
+        <i class="pi pi-users empty-icon"></i>
+        <h4 class="empty-title">No Staff Found</h4>
+        <p class="empty-desc">Try clearing your search terms or filter constraints.</p>
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- Pending Invitations Table -->
+  <div class="table-container" *ngIf="activeTab() === 'invitations' && !loading()">
+    <table class="staff-table" *ngIf="invitations().length > 0; else noInvitations">
+      <thead>
+        <tr>
+          <th>Branch Name</th>
+          <th>Invited Role</th>
+          <th>Status</th>
+          <th>Expires At</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let invite of invitations()">
+          <td class="font-medium text-slate-800">{{ invite.branch_names.join(', ') }}</td>
+          <td>
+            <span 
+              class="role-badge" 
+              [class]="invite.role_name.toLowerCase().replace(' ', '-')"
+              style="cursor:pointer"
+              (click)="openRoleDetailModal(invite.role_id, $event)"
+            >
+              {{ invite.role_name }}
+            </span>
+          </td>
+          <td>
+            <span class="invite-status-badge" 
+              [ngClass]="{
+                'pending-invite': invite.status === 0 || (invite.status && invite.status.toString().toLowerCase().includes('pend')),
+                'accepted-invite': invite.status === 1 || (invite.status && invite.status.toString().toLowerCase().includes('accept')),
+                'expired-invite': invite.status === 2 || (invite.status && invite.status.toString().toLowerCase().includes('expir')),
+                'revoked-invite': invite.status === 3 || invite.status === 4 || (invite.status && (invite.status.toString().toLowerCase().includes('revok') || invite.status.toString().toLowerCase().includes('reject')))
+              }"
+            >
+              {{ 
+                (invite.status === 0 || (invite.status && invite.status.toString().toLowerCase().includes('pend'))) ? 'Pending' : 
+                (invite.status === 1 || (invite.status && invite.status.toString().toLowerCase().includes('accept'))) ? 'Accepted' : 
+                (invite.status === 2 || (invite.status && invite.status.toString().toLowerCase().includes('expir'))) ? 'Expired' : 
+                (invite.status === 4 || (invite.status && invite.status.toString().toLowerCase().includes('reject'))) ? 'Rejected' : 
+                'Revoked' 
+              }}
+            </span>
+          </td>
+          <td class="text-slate-500 text-sm">{{ formatDate(invite.expires_at) }}</td>
+          <td>
+            <button 
+              class="btn-revoke-invite" 
+              *ngIf="invite.status === 0 || (invite.status && invite.status.toString().toLowerCase().includes('pend'))"
+              (click)="handleRevokeInvitation(invite.id, $event)"
+            >
+              Revoke
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <ng-template #noInvitations>
+      <div class="empty-state">
+        <i class="pi pi-envelope empty-icon"></i>
+        <h4 class="empty-title">No Invitations Found</h4>
+        <p class="empty-desc">Send invitation links to bring new staff members on board.</p>
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- Pagination Footer (Only shown for Active Staff) -->
+  <div class="card-footer" *ngIf="activeTab() === 'assignments' && assignments().length > 0 && !loading()">
+    <span class="footer-summary">
+      Showing {{ (currentPage() - 1) * pageSize + 1 }} to {{ Math.min(currentPage() * pageSize, totalCount()) }} of {{ totalCount() }} entries
+    </span>
+    
+    <div class="pagination-controls">
+      <button 
+        class="pagination-btn" 
+        [disabled]="currentPage() === 1"
+        (click)="setPage(currentPage() - 1)"
+      >
+        Previous
+      </button>
+
+      <button 
+        *ngFor="let p of [].constructor(totalPages()); let i = index" 
+        class="pagination-num-btn"
+        [class.active]="currentPage() === i + 1"
+        (click)="setPage(i + 1)"
+      >
+        {{ i + 1 }}
+      </button>
+
+      <button 
+        class="pagination-btn" 
+        [disabled]="currentPage() === totalPages()"
+        (click)="setPage(currentPage() + 1)"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================= -->
+<!-- MODAL: Add New Staff -->
+<!-- ========================================= -->
+<div class="modal-backdrop" *ngIf="showAddModal()">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title">Add New Staff Member</h3>
+      <button class="modal-close-btn" (click)="closeAddModal()">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+
+    <!-- Modal Tabs -->
+    <div class="modal-tabs">
+      <button 
+        class="modal-tab-btn" 
+        [class.active]="addModalTab() === 'invite'"
+        (click)="setAddModalTab('invite')"
+      >
+        Invite New Staff Link
+      </button>
+      <button 
+        class="modal-tab-btn" 
+        [class.active]="addModalTab() === 'assign'"
+        (click)="setAddModalTab('assign')"
+      >
+        Assign Existing Pharmacy User
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Invite Link Form -->
+      <div *ngIf="addModalTab() === 'invite'" class="form-container">
+        <p class="form-desc text-slate-500 mb-4">
+          Generate an invitation link that lets a new employee register and gain access to this pharmacy branch.
+        </p>
+
+        <div class="form-group" *ngIf="!generatedLink()">
+          <label class="form-label">Select Staff Role</label>
+          <select class="form-control" [(ngModel)]="inviteRoleId">
+            <option value="" disabled selected>Choose a role...</option>
+            <option *ngFor="let role of rolesList()" [value]="role.id">{{ role.name }}</option>
+          </select>
+        </div>
+        
+        <div class="form-group mt-3" *ngIf="!generatedLink() && pharmacyBranches().length > 0">
+          <label class="form-label">Assign to Branches</label>
+          <div class="branches-checkbox-grid mt-2">
+            <div *ngFor="let b of pharmacyBranches()" class="branch-checkbox-item">
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  [checked]="inviteBranchIds().includes(b.id)" 
+                  (change)="toggleInviteBranch(b.id)" 
+                />
+                <span>{{ b.branchName }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-group" *ngIf="!generatedLink()">
+          <label class="form-label">Link Expiry Period</label>
+          <select class="form-control" [(ngModel)]="inviteExpiresDays">
+            <option [value]="3">3 Days</option>
+            <option [value]="7">7 Days</option>
+            <option [value]="14">14 Days</option>
+            <option [value]="30">30 Days</option>
+          </select>
+        </div>
+
+        <button 
+          class="btn-brand w-full mt-4" 
+          *ngIf="!generatedLink()"
+          [disabled]="!inviteRoleId() || inviting()"
+          (click)="handleInvite()"
+        >
+          <i class="pi pi-spin pi-spinner mr-1" *ngIf="inviting()"></i>
+          Generate Invitation Link
+        </button>
+
+        <div class="generated-link-box mt-4" *ngIf="generatedLink()">
+          <h4 class="font-bold form-desc text-slate-800 text-xs mb-1">Link Generated Successfully!</h4>
+          <p class="text-[10px] form-desc text-slate-500 mb-4">Copy this link and send it to your staff member. It expires on: {{ invitationExpiresAt() }}</p>
+          
+          <div class="copy-input-group mt-4">
+            <input type="text" class="copy-input" [value]="generatedLink()" readonly />
+            <button class="btn-copy" (click)="copyLink(generatedLink())">
+              {{ copied() ? 'Copied!' : 'Copy Link' }}
+            </button>
+          </div>
+
+          <button class="btn-secondary w-full mt-4" (click)="closeAddModal()">
+            Done
+          </button>
+        </div>
+      </div>
+
+      <!-- Assign User Form -->
+      <div *ngIf="addModalTab() === 'assign'" class="form-container">
+
+        <div class="form-group">
+          <label class="form-label">Select User</label>
+          <select class="form-control" [(ngModel)]="assignUserId">
+            <option value="" disabled selected>Choose user...</option>
+            <option *ngFor="let u of unassignedUsers()" [value]="u.id">
+              {{ u.fullName }} ({{ u.email }})
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Assign Role</label>
+          <select class="form-control" [(ngModel)]="assignRoleId">
+            <option value="" disabled selected>Choose role...</option>
+            <option *ngFor="let role of rolesList()" [value]="role.id">{{ role.name }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Assignment Reason</label>
+          <textarea 
+            class="form-control h-20 resize-none" 
+            placeholder="e.g. Schedule adjustment, permanent hire"
+            [(ngModel)]="assignReason"
+          ></textarea>
+        </div>
+
+        <div class="modal-actions mt-6">
+          <button class="btn-secondary" (click)="closeAddModal()">Cancel</button>
+          <button 
+            class="btn-brand" 
+            [disabled]="!assignUserId() || !assignRoleId() || assigning()"
+            (click)="handleAssign()"
+          >
+            <i class="pi pi-spin pi-spinner mr-1" *ngIf="assigning()"></i>
+            Assign Staff
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================= -->
+<!-- MODAL: Edit Assignment Role -->
+<!-- ========================================= -->
+<div class="modal-backdrop" *ngIf="showEditModal()">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title">Edit Staff Role</h3>
+      <button class="modal-close-btn" (click)="closeEditModal()">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+
+    <div class="modal-body form-container">
+      <p class="text-sm text-slate-600 mb-4" *ngIf="editingAssignment()">
+        Updating role assignment for <strong>{{ editingAssignment()?.fullName }}</strong> in this branch.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">New Staff Role</label>
+        <select class="form-control" [(ngModel)]="editRoleId">
+          <option *ngFor="let role of rolesList()" [value]="role.id">{{ role.name }}</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Reason for Change</label>
+        <textarea 
+          class="form-control h-20 resize-none" 
+          placeholder="e.g. Promotion, responsibilities adjustment"
+          [(ngModel)]="editReason"
+        ></textarea>
+      </div>
+
+      <div class="modal-actions mt-6">
+        <button class="btn-secondary" (click)="closeEditModal()">Cancel</button>
+        <button 
+          class="btn-brand" 
+          [disabled]="!editRoleId() || updating()"
+          (click)="handleUpdateAssignment()"
+        >
+          <i class="pi pi-spin pi-spinner mr-1" *ngIf="updating()"></i>
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================= -->
+<!-- MODAL: Revoke / Deactivate Confirmation -->
+<!-- ========================================= -->
+<div class="modal-backdrop" *ngIf="showRevokeModal()">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title">Deactivate Staff Access</h3>
+      <button class="modal-close-btn" (click)="closeRevokeModal()">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+
+    <div class="modal-body form-container">
+      <p class="text-sm text-slate-600 mb-4" *ngIf="revokingAssignment()">
+        Are you sure you want to deactivate branch access for <strong>{{ revokingAssignment()?.fullName }}</strong>?
+      </p>
+      <div class="warning-alert mb-4">
+        <i class="pi pi-exclamation-triangle mr-2"></i>
+        <span>This will revoke all active roles and system access permissions for this branch.</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Reason for Deactivation</label>
+        <textarea 
+          class="form-control h-20 resize-none" 
+          placeholder="e.g. Resignation, department transfer"
+          [(ngModel)]="revokeReason"
+        ></textarea>
+      </div>
+
+      <div class="modal-actions mt-6">
+        <button class="btn-secondary" (click)="closeRevokeModal()">Cancel</button>
+        <button 
+          class="btn-danger-action" 
+          [disabled]="deactivating()"
+          (click)="handleRevokeAssignment()"
+        >
+          <i class="pi pi-spin pi-spinner mr-1" *ngIf="deactivating()"></i>
+          Deactivate Access
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================= -->
+<!-- MODAL: View User Details -->
+<!-- ========================================= -->
+<div class="modal-backdrop" *ngIf="showUserDetailModal()">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title">Staff Details</h3>
+      <button class="modal-close-btn" (click)="closeUserDetailModal()">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="user-detail-container">
+        <div class="user-detail-header">
+          <ng-container *ngIf="selectedUserDetail()?.avatarUrl; else noDetailAvatar">
+            <img [src]="selectedUserDetail()?.avatarUrl" alt="Avatar" class="detail-avatar" />
+          </ng-container>
+          <ng-template #noDetailAvatar>
+            <div 
+              class="detail-avatar-initials text-white" 
+              [style.background-color]="getAvatarColor(selectedUserDetail()?.fullName || selectedUserDetail()?.username)"
+            >
+              {{ getInitials(selectedUserDetail()?.fullName || selectedUserDetail()?.username) }}
+            </div>
+          </ng-template>
+          <div>
+            <h4 class="detail-name">{{ selectedUserDetail()?.fullName || selectedUserDetail()?.username }}</h4>
+            <p class="detail-username">@{{ selectedUserDetail()?.username }}</p>
+          </div>
+        </div>
+
+        <div class="detail-info-grid">
+          <div class="detail-info-row">
+            <span class="detail-info-label">Email Address</span>
+            <span class="detail-info-value">{{ selectedUserDetail()?.email || 'no-email@pharmalogix.com' }}</span>
+          </div>
+          <div class="detail-info-row">
+            <span class="detail-info-label">Phone Number</span>
+            <span class="detail-info-value">{{ selectedUserDetail()?.phone || '-' }}</span>
+          </div>
+          <div class="detail-info-row">
+            <span class="detail-info-label">Assigned Role</span>
+            <span class="detail-info-value">
+              <span class="role-badge" [class]="selectedUserDetail()?.roleName?.toLowerCase()?.replace(' ', '-')">
+                {{ selectedUserDetail()?.roleName }}
+              </span>
+            </span>
+          </div>
+          <div class="detail-info-row">
+            <span class="detail-info-label">Status</span>
+            <span class="detail-info-value">
+              <span class="status-bullet-container">
+                <span class="status-bullet" [class.active-bullet]="selectedUserDetail()?.isActive" [class.inactive-bullet]="!selectedUserDetail()?.isActive"></span>
+                <span class="status-text" [class.text-active]="selectedUserDetail()?.isActive" [class.text-inactive]="!selectedUserDetail()?.isActive">
+                  {{ selectedUserDetail()?.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </span>
+            </span>
+          </div>
+          <div class="detail-info-row">
+            <span class="detail-info-label">Join Date</span>
+            <span class="detail-info-value">{{ selectedUserDetail()?.assignedAt | date:'mediumDate' }}</span>
+          </div>
+          <div class="detail-info-row">
+            <span class="detail-info-label">Assigned By</span>
+            <span class="detail-info-value">@{{ selectedUserDetail()?.assignedByUsername }}</span>
+          </div>
+          <div class="detail-info-row">
+            <span class="detail-info-label">Last Login</span>
+            <span class="detail-info-value">{{ selectedUserDetail()?.lastLoginAt ? (selectedUserDetail()?.lastLoginAt | date:'medium') : 'Never' }}</span>
+          </div>
+          <div class="detail-info-row full-width">
+            <span class="detail-info-label">Assignment Reason</span>
+            <span class="detail-info-value reason-box">{{ selectedUserDetail()?.reason || 'No reason provided.' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions mt-6">
+        <button class="btn-brand" (click)="closeUserDetailModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================= -->
+<!-- MODAL: View Role Details -->
+<!-- ========================================= -->
+<div class="modal-backdrop" *ngIf="showRoleDetailModal()">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title">Role Details</h3>
+      <button class="modal-close-btn" (click)="closeRoleDetailModal()">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div *ngIf="loadingRoleDetail()" class="loading-overlay">
+        <i class="pi pi-spin pi-spinner text-3xl text-teal-600"></i>
+      </div>
+
+      <div *ngIf="!loadingRoleDetail() && selectedRoleDetail()" class="role-detail-container">
+        <div class="role-detail-header">
+          <span class="role-badge" [class]="(selectedRoleDetail()?.name || selectedRoleDetail()?.roleName || '')?.toLowerCase()?.replace(' ', '-')">
+            {{ selectedRoleDetail()?.name || selectedRoleDetail()?.roleName }}
+          </span>
+          <p class="role-desc text-sm text-slate-500 mt-2">
+            {{ selectedRoleDetail()?.description || selectedRoleDetail()?.roleDescription || 'No description provided.' }}
+          </p>
+        </div>
+
+        <div class="permissions-section mt-4">
+          <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Assigned Permissions</h4>
+          
+          <div class="permissions-list">
+            <div *ngFor="let perm of getRolePermissions()" class="permission-item">
+              <i class="pi pi-check-circle text-teal-500 mr-2"></i>
+              <div>
+                <span class="permission-name font-bold">{{ perm.name }}</span>
+                <p class="permission-desc text-xs text-slate-400">{{ perm.description || 'Access and manage modular capabilities.' }}</p>
+              </div>
+            </div>
+            <p class="text-sm text-slate-400" *ngIf="getRolePermissions().length === 0">
+              No permissions assigned to this role.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions mt-6">
+        <button class="btn-brand" (click)="closeRoleDetailModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

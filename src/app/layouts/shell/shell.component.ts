@@ -4,6 +4,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationEnd } fro
 import { filter, map } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { ChatUnreadService } from '../../core/services/chat-unread.service';
 import { UserProfileService } from '../../shared/services/user-profile.service';
 import { NavItem } from '../../shared/models/nav.model';
 import { ADMIN_NAV, MANAGER_NAV, STAFF_NAV } from './shell.config';
@@ -20,6 +21,7 @@ export class ShellComponent implements OnInit {
   readonly auth           = inject(AuthService);
   readonly theme          = inject(ThemeService);
   readonly userProfileSvc = inject(UserProfileService);
+  readonly chatUnread     = inject(ChatUnreadService);
   private readonly router = inject(Router);
 
   sidebarOpen        = signal(false);
@@ -38,6 +40,12 @@ export class ShellComponent implements OnInit {
 
   isDashboardRoute = computed(() => this.currentUrl().split('?')[0].split('#')[0].endsWith('/dashboard'));
 
+  // Messages nav badge refresh disabled: per-conversation unread-count fan-out
+  // was firing N+1 requests on every route change. Re-enable once there's a
+  // single aggregate endpoint for total unread count.
+  constructor() {
+  }
+
   ngOnInit(): void {
     if (!this.userProfileSvc.profileLoaded()) {
       this.userProfileSvc.loadProfile().subscribe();
@@ -48,10 +56,19 @@ export class ShellComponent implements OnInit {
   }
 
   navItems = computed<NavItem[]>(() => {
-    const role = this.auth.userRole();
-    if (role === 'admin')   return ADMIN_NAV;
-    if (role === 'manager') return MANAGER_NAV;
-    return STAFF_NAV;
+    const role   = this.auth.userRole();
+    const guards = this.auth.guards();
+
+    const base = role === 'admin'
+      ? ADMIN_NAV
+      : role === 'manager'
+      ? MANAGER_NAV
+      : STAFF_NAV;
+
+    // Admin nav is unguarded — show all items.
+    // For manager/staff, hide items whose guard the user doesn't hold.
+    if (role === 'admin') return base;
+    return base.filter(item => !item.guard || guards.has(item.guard));
   });
 
   roleLabel = computed(() => {

@@ -1,0 +1,293 @@
+@if (!hasDashboardGuard()) {
+  <div class="no-access">
+    <div class="no-access-icon"><i class="pi pi-lock"></i></div>
+    <h3>You don't have access to the dashboard</h3>
+    <p>Please contact your administrator if you believe this is a mistake.</p>
+  </div>
+} @else {
+<!-- Header -->
+<div class="page-header">
+  <div>
+    <div class="breadcrumb">
+      @if (pharmacyName()) {
+        <span>{{ pharmacyName() }}</span>
+        <span class="sep">•</span>
+      }
+      <span>{{ branchLabel() }}</span>
+      <span class="sep">•</span>
+      <span class="active">{{ isManager() ? 'MANAGER' : 'STAFF' }} DASHBOARD</span>
+    </div>
+  </div>
+  <div class="today-date">
+    <i class="pi pi-calendar"></i>
+    {{ today | date:'EEEE, d MMMM y' }}
+  </div>
+</div>
+
+<!-- Analytics cards -->
+<div class="analytics-grid">
+  @if (loading() && !summary()) {
+    @for (i of [1,2,3]; track i) {
+      <div class="analytics-card skeleton-card"></div>
+    }
+  } @else {
+    <div class="analytics-card">
+      <div class="card-icon-wrap teal"><i class="pi pi-heart-fill"></i></div>
+      <div class="card-body">
+        <p class="card-label">Total Medicines</p>
+        <h2 class="card-value">{{ (summary()?.totalSkus ?? 0) | number }}</h2>
+        <div class="card-change up">
+          <i class="pi pi-tag"></i>
+          {{ (summary()?.totalValue ?? 0) | currency:(summary()?.currencyCode || 'SAR'):'symbol':'1.0-0' }} total value
+        </div>
+      </div>
+    </div>
+
+    <div class="analytics-card card-red">
+      <div class="card-icon-wrap red"><i class="pi pi-box"></i></div>
+      <div class="card-body">
+        <p class="card-label">Out-of-Stock</p>
+        <h2 class="card-value">{{ (summary()?.outOfStockCount ?? 0) | number }}</h2>
+        <span class="attention-badge">Requires Attention</span>
+      </div>
+    </div>
+
+    @if (isManager()) {
+      <div class="analytics-card">
+        <div class="card-icon-wrap teal"><i class="pi pi-wallet"></i></div>
+        <div class="card-body">
+          <p class="card-label">Total Daily Revenue</p>
+          <h2 class="card-value">
+            {{ (revenueToday()?.currentValue ?? 0) | currency:currencyCode():'symbol':'1.0-0' }}
+          </h2>
+          <div class="card-change" [class.up]="(revenueToday()?.changePercentage ?? 0) >= 0">
+            <i class="pi" [class.pi-arrow-up]="(revenueToday()?.changePercentage ?? 0) >= 0" [class.pi-arrow-down]="(revenueToday()?.changePercentage ?? 0) < 0"></i>
+            {{ (revenueToday()?.changePercentage ?? 0) | number:'1.0-1' }}% vs previous period
+          </div>
+        </div>
+      </div>
+    } @else {
+      <div class="analytics-card">
+        <div class="card-icon-wrap teal"><i class="pi pi-shopping-cart"></i></div>
+        <div class="card-body">
+          <p class="card-label">Sales Today</p>
+          <h2 class="card-value">{{ (salesCountToday()?.currentValue ?? 0) | number }}</h2>
+          <div class="card-change" [class.up]="(salesCountToday()?.changePercentage ?? 0) >= 0">
+            <i class="pi" [class.pi-arrow-up]="(salesCountToday()?.changePercentage ?? 0) >= 0" [class.pi-arrow-down]="(salesCountToday()?.changePercentage ?? 0) < 0"></i>
+            {{ (salesCountToday()?.changePercentage ?? 0) | number:'1.0-1' }}% vs previous period
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>
+
+<!-- Charts -->
+<div class="charts-toolbar">
+  <h3 class="charts-toolbar-title">Activity Overview</h3>
+  <app-time-range-selector [value]="selectedRange()" (valueChange)="selectedRange.set($event)"/>
+</div>
+
+<div class="charts-row">
+  <div class="chart-card">
+    <div class="chart-header">
+      <h4>Stock Trends</h4>
+    </div>
+    <p class="chart-summary">
+      <span class="summary-value" [class.negative]="stockLevelDelta() < 0">
+        {{ stockLevelDelta() > 0 ? '+' : '' }}{{ stockLevelDelta() | number }} units
+      </span>
+      change this period
+    </p>
+
+    @if (chartsLoading()) {
+      <div class="chart-skeleton"></div>
+    } @else if (stockTrendIsEmpty()) {
+      <div class="chart-empty">
+        <i class="pi pi-chart-line"></i>
+        <p>No stock movement in this period.</p>
+      </div>
+    } @else {
+      <apx-chart
+        [series]="stockTrendChartOptions().series"
+        [chart]="stockTrendChartOptions().chart"
+        [xaxis]="stockTrendChartOptions().xaxis"
+        [yaxis]="stockTrendChartOptions().yaxis"
+        [stroke]="stockTrendChartOptions().stroke"
+        [fill]="stockTrendChartOptions().fill"
+        [markers]="stockTrendChartOptions().markers"
+        [grid]="stockTrendChartOptions().grid"
+        [tooltip]="stockTrendChartOptions().tooltip"
+        [dataLabels]="stockTrendChartOptions().dataLabels"
+        [colors]="stockTrendChartOptions().colors"
+        [annotations]="stockTrendChartOptions().annotations"
+        [noData]="stockTrendChartOptions().noData"
+      />
+    }
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-header">
+      <h4>{{ isManager() ? 'Revenue Trend' : 'Sales Volume' }}</h4>
+    </div>
+    <p class="chart-summary">
+      @if (isManager()) {
+        <span class="summary-value">{{ secondaryChartSummaryValue() | currency:currencyCode():'symbol':'1.0-0' }}</span>
+        revenue this period
+      } @else {
+        <span class="summary-value">{{ secondaryChartSummaryValue() | number }}</span>
+        sales this period
+      }
+    </p>
+
+    @if (chartsLoading()) {
+      <div class="chart-skeleton"></div>
+    } @else if (secondaryChartIsEmpty()) {
+      <div class="chart-empty">
+        <i class="pi pi-chart-bar"></i>
+        <p>No {{ isManager() ? 'revenue' : 'sales' }} in this period.</p>
+      </div>
+    } @else {
+      <apx-chart
+        [series]="secondaryChartOptions().series"
+        [chart]="secondaryChartOptions().chart"
+        [xaxis]="secondaryChartOptions().xaxis"
+        [yaxis]="secondaryChartOptions().yaxis"
+        [stroke]="secondaryChartOptions().stroke"
+        [fill]="secondaryChartOptions().fill"
+        [markers]="secondaryChartOptions().markers"
+        [grid]="secondaryChartOptions().grid"
+        [tooltip]="secondaryChartOptions().tooltip"
+        [dataLabels]="secondaryChartOptions().dataLabels"
+        [colors]="secondaryChartOptions().colors"
+        [plotOptions]="secondaryChartOptions().plotOptions"
+      />
+    }
+  </div>
+</div>
+
+<!-- Bottom 3-col -->
+<div class="bottom-grid" [class.bottom-grid--2col]="!isManager()">
+  <!-- Staff -->
+  @if (isManager()) {
+    <div class="section-card">
+      <div class="section-head">
+        <h4>Staff Management</h4>
+        <a [routerLink]="basePath() + '/staff'" class="view-all">View All</a>
+      </div>
+      <div class="staff-list">
+        @if (recentStaff().length === 0) {
+          <p class="staff-note">No staff members assigned to this branch yet.</p>
+        }
+        @for (person of recentStaff(); track person.id) {
+          <div class="staff-item">
+            <div class="staff-icon-wrap">
+              @if (person.avatarUrl) {
+                <img [src]="person.avatarUrl" alt="" class="staff-avatar-img"/>
+              } @else {
+                <div class="staff-avatar-initials" [style.background-color]="staffAvatarColor(person.fullName || person.username)">
+                  {{ staffInitials(person.fullName || person.username) }}
+                </div>
+              }
+            </div>
+            <div class="staff-info">
+              <p class="staff-name">{{ person.fullName || person.username }}</p>
+              <p class="staff-count">{{ person.roleName || 'Staff' }}</p>
+            </div>
+            <span class="status-badge" [class.badge-success]="person.isActive" [class.badge-pending]="!person.isActive">
+              {{ person.isActive ? 'Active' : 'Inactive' }}
+            </span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Most Active Medicines -->
+  <div class="section-card">
+    <div class="section-head">
+      <h4>Most Active Medicines</h4>
+      <a [routerLink]="basePath() + '/sales'" class="view-all">View All</a>
+    </div>
+    <div class="medicine-list">
+      @if (topActive().length === 0) {
+        <p class="staff-note">No transactions in the last 7 days.</p>
+      }
+      @for (med of topActive(); track med.variantId) {
+        <div class="medicine-item">
+          <div class="med-icon">
+            <i class="pi pi-heart-fill" style="color:var(--color-brand-primary)"></i>
+          </div>
+          <div class="med-info">
+            <p class="med-name">{{ med.medicineName }}</p>
+            <p class="med-type">{{ med.variantName }}</p>
+          </div>
+          <div class="med-stats">
+            <p class="med-sold">{{ med.count }}</p>
+            <p class="med-sold-label">Transactions</p>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Branch Location -->
+  <div class="section-card">
+    <div class="section-head">
+      <h4>Branch Location</h4>
+      <a [routerLink]="basePath() + '/settings'" class="view-all">{{ branchLabel() }} <i class="pi pi-chevron-right"></i></a>
+    </div>
+    <div class="map-container">
+      <app-map [lat]="branchLat()" [lng]="branchLng()" [label]="branchLabel()"/>
+    </div>
+    <p class="location-addr">
+      <i class="pi pi-map-marker" style="color:var(--color-brand-primary)"></i>
+      {{ branchAddress() || branchLabel() }}
+    </p>
+  </div>
+</div>
+
+<!-- Low Stock table -->
+<div class="section-card mt-4">
+  <div class="section-head">
+    <div style="display:flex;align-items:center;gap:10px">
+      <h4>Low Stock Alerts</h4>
+      <span class="badge-count">{{ lowStockItems().length }} Items</span>
+    </div>
+    <a [routerLink]="basePath() + '/inventory'" class="view-all">View in Inventory <i class="pi pi-chevron-right"></i></a>
+  </div>
+  <div class="table-scroll">
+    @if (lowStockItems().length === 0) {
+      <p class="staff-note">No low-stock or out-of-stock items right now.</p>
+    } @else {
+      <table class="stock-table">
+        <thead>
+          <tr>
+            <th>MEDICINE NAME</th>
+            <th>CURRENT STOCK</th>
+            <th>STATUS</th>
+            <th>LAST UPDATED</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of lowStockItems(); track row.variantId) {
+            <tr>
+              <td class="med-cell">
+                <i class="pi pi-heart-fill" style="color:var(--color-text-muted)"></i>
+                {{ row.medicineName }}
+              </td>
+              <td>{{ row.quantity }} Units</td>
+              <td>
+                <span class="status-badge {{ lowStockBadgeClass(row.status) }}">
+                  {{ row.status }}
+                </span>
+              </td>
+              <td>{{ row.lastUpdatedAt | date:'dd MMM, h:mm a' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>
+}

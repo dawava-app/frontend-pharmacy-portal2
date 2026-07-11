@@ -41,6 +41,10 @@ export class OnboardingLayoutComponent implements OnInit {
 
   ngOnInit(): void {
     this.readTokenFromUrl();
+    if (!this.tokens.getAccessToken()) {
+      this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
+      return;
+    }
     this.updateStepperState();
     this.runStatusCheck();
   }

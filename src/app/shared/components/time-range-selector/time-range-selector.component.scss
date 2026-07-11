@@ -1,0 +1,85 @@
+.range-selector {
+  position: relative;
+}
+
+.range-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-surface-secondary);
+  border: 1px solid transparent;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease;
+
+  &:hover { color: var(--color-text-primary); }
+  &[aria-expanded="true"] { border-color: var(--color-brand-primary); color: var(--color-text-primary); }
+}
+
+.chevron {
+  font-size: 10px;
+  transition: transform 0.2s ease;
+  &.rotated { transform: rotate(180deg); }
+}
+
+.range-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 299;
+}
+
+.range-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 170px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 12px;
+  box-shadow:
+    0 20px 40px -8px rgba(0,0,0,0.20),
+    0 4px 12px rgba(0,0,0,0.08);
+  z-index: 300;
+  overflow: hidden;
+  padding: 6px;
+  transform-origin: top right;
+  animation: dropIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropIn {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.range-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover { background: var(--color-bg-surface-secondary); }
+  &.active { color: var(--color-brand-primary); font-weight: 600; }
+
+  i { font-size: 11px; color: var(--color-brand-primary); }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-brand-primary);
+    outline-offset: -2px;
+  }
+}

@@ -82,7 +82,7 @@
                     @if (conv.lastMessage?.deletedAt) {
                       <em>Message deleted</em>
                     } @else {
-                      {{ conv.lastMessage?.content || 'No messages yet' }}
+                      {{ getLastMessagePreview(conv) }}
                     }
                   </span>
                   @if ((conv.unreadCount ?? 0) > 0) {
@@ -310,7 +310,7 @@
                                 title="View image"
                               >
                                 @if (getAttachmentUrl(att); as imgUrl) {
-                                  <img [src]="imgUrl" class="attachment-image" [alt]="att.label || 'Image'" />
+                                  <img [src]="imgUrl" class="attachment-image" [alt]="att.label || 'Image'" (error)="onAttachmentImageError(att)" />
                                 } @else {
                                   <div class="attachment-image-loading"><i class="pi pi-spin pi-spinner"></i></div>
                                 }
