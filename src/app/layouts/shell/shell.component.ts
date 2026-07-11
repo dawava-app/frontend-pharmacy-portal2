@@ -48,10 +48,19 @@ export class ShellComponent implements OnInit {
   }
 
   navItems = computed<NavItem[]>(() => {
-    const role = this.auth.userRole();
-    if (role === 'admin')   return ADMIN_NAV;
-    if (role === 'manager') return MANAGER_NAV;
-    return STAFF_NAV;
+    const role   = this.auth.userRole();
+    const guards = this.auth.guards();
+
+    const base = role === 'admin'
+      ? ADMIN_NAV
+      : role === 'manager'
+      ? MANAGER_NAV
+      : STAFF_NAV;
+
+    // Admin nav is unguarded — show all items.
+    // For manager/staff, hide items whose guard the user doesn't hold.
+    if (role === 'admin') return base;
+    return base.filter(item => !item.guard || guards.has(item.guard));
   });
 
   roleLabel = computed(() => {

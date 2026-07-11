@@ -13,6 +13,7 @@ import {
   SwitchBranchRequest, ChangePasswordRequest,
 } from '../../shared/models/auth.model';
 import { User, UserRole } from '../../shared/models/user.model';
+import { SecurityGuard } from '../../shared/models/auth.model';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -28,6 +29,7 @@ export class AuthService {
   readonly currentPharmacyId  = signal<string | null>(null);
   readonly hasDashboardAccess = signal<boolean>(true);
   readonly permissions        = signal<unknown[]>([]);
+  readonly guards             = signal<Set<SecurityGuard>>(new Set());
 
   /** The branch_id encoded in the access token issued immediately after login —
    *  i.e. the backend's chosen default workspace. Persisted so it survives
@@ -53,6 +55,27 @@ export class AuthService {
     }
   }
 
+  /** Decode the `guard` claim from the JWT and normalise it to a Set.
+   *  The claim may be absent, a single string, or an array of strings. */
+  private parseGuardsFromToken(token: string): void {
+    try {
+      const claims = jwtDecode<Record<string, unknown>>(token);
+      const raw = claims['guard'];
+      const list: string[] = Array.isArray(raw)
+        ? raw
+        : typeof raw === 'string'
+        ? [raw]
+        : [];
+      this.guards.set(new Set(list as SecurityGuard[]));
+    } catch {
+      this.guards.set(new Set());
+    }
+  }
+
+  hasGuard(guard: SecurityGuard): boolean {
+    return this.guards().has(guard);
+  }
+
   /* ── Login ── */
   login(body: LoginRequest): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.BASE}/auth/login?user=false`, body).pipe(
@@ -62,6 +85,7 @@ export class AuthService {
         this.hasDashboardAccess.set(res.has_dashboard_access ?? true);
         this.availableScopes.set(res.available_scopes ?? []);
         this.setWorkspaceFromToken(res.access_token, res.scope?.branch_id);
+        this.parseGuardsFromToken(res.access_token);
 
         // The access token issued right here, at login, encodes the backend's
         // default workspace — capture it before any subsequent branch switch.
@@ -84,6 +108,7 @@ export class AuthService {
         this.hasDashboardAccess.set(res.has_dashboard_access ?? true);
         if (res.available_scopes) this.availableScopes.set(res.available_scopes);
         this.setWorkspaceFromToken(res.access_token, res.scope?.branch_id);
+        this.parseGuardsFromToken(res.access_token);
       })
     );
   }
@@ -201,6 +226,7 @@ export class AuthService {
         this.hasDashboardAccess.set(res.has_dashboard_access ?? true);
         this.setWorkspaceFromToken(res.access_token, res.scope?.branch_id ?? branchId);
         if (res.available_scopes) this.availableScopes.set(res.available_scopes);
+        this.parseGuardsFromToken(res.access_token);
       }),
       switchMap(() => this.fetchMe())
     );
@@ -245,6 +271,7 @@ export class AuthService {
     this.currentPharmacyId.set(null);
     this.defaultBranchId.set(null);
     this.permissions.set([]);
+    this.guards.set(new Set());
     this.router.navigate(['/login']);
   }
 

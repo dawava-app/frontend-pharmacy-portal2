@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { securityGuard } from '../../core/guards/security-guard.guard';
 
 const placeholder = () =>
   import('../../shared/components/coming-soon/coming-soon.component').then(m => m.ComingSoonComponent);
@@ -7,12 +8,22 @@ export const managerRoutes: Routes = [
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
   {
     path: 'dashboard',
+    canActivate: [securityGuard('dashboard')],
     loadComponent: () => import('./pages/dashboard/manager-dashboard.component').then(m => m.ManagerDashboardComponent),
   },
-  { path: 'inventory', loadComponent: placeholder },
-  { path: 'sales',     loadComponent: placeholder },
+  {
+    path: 'inventory',
+    canActivate: [securityGuard('inventory')],
+    loadComponent: placeholder,
+  },
+  {
+    path: 'sales',
+    canActivate: [securityGuard('sales')],
+    loadComponent: placeholder,
+  },
   {
     path: 'messages',
+    canActivate: [securityGuard('messages')],
     loadComponent: () => import('../chat/pages/chat-page/chat-page.component').then(m => m.ChatPageComponent),
   },
   {

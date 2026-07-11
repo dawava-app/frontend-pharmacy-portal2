@@ -1,3 +1,5 @@
+export type SecurityGuard = 'dashboard' | 'messages' | 'sales' | 'inventory';
+
 export interface LoginRequest {
   identifier: string;
   password: string;
