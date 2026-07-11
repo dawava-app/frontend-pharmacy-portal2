@@ -95,8 +95,8 @@ Create a new staff role assignment for a branch.
 - **Request Body**:
   ```json
   {
-    "userId": "e0a8b941-6927-4c4f-9a74-d4b998246cb3",
-    "roleId": "41a1b6b8-3ec6-48e0-916f-eec9a1db0f12",
+    "user_id": "e0a8b941-6927-4c4f-9a74-d4b998246cb3",
+    "role_id": "41a1b6b8-3ec6-48e0-916f-eec9a1db0f12",
     "reason": "Staff shift swap"
   }
   ```

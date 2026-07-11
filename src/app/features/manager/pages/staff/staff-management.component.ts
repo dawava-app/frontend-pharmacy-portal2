@@ -439,8 +439,8 @@ export class StaffManagementComponent implements OnInit {
 
     this.assigning.set(true);
     this.staffSvc.assignStaff(currentBranchId, {
-      userId: this.assignUserId(),
-      roleId: this.assignRoleId(),
+      user_id: this.assignUserId(),
+      role_id: this.assignRoleId(),
       reason: this.assignReason()
     }).subscribe({
       next: () => {
@@ -509,8 +509,8 @@ export class StaffManagementComponent implements OnInit {
 
     this.loading.set(true);
     this.staffSvc.assignStaff(currentBranchId, {
-      userId: a.userId,
-      roleId: a.roleId,
+      user_id: a.userId,
+      role_id: a.roleId,
       reason: 'Re-activation of staff role'
     }).subscribe({
       next: () => {

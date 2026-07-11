@@ -64,10 +64,10 @@ export class LoginComponent {
   private loadProfileAndNavigate(hasDashboardAccess: boolean): void {
     const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
     const isJoinFlow = returnUrl?.startsWith('/join');
+    const isOnboardingFlow = returnUrl?.startsWith('/onboarding');
 
-    // If the user is accepting an invitation, skip the dashboard-access check
-    // and navigate directly to the join page so they can accept or decline.
-    if (!hasDashboardAccess && !isJoinFlow) {
+    // If the user is accepting an invitation or going to onboarding, skip the dashboard-access check
+    if (!hasDashboardAccess && !isJoinFlow && !isOnboardingFlow) {
       this.loading.set(false);
       this.error.set('Your account does not have access to this dashboard. Please contact your administrator.');
       return;
