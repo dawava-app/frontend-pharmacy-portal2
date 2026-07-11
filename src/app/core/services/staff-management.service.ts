@@ -111,7 +111,7 @@ export class StaffManagementService {
 
   assignStaff(
     branchId: string,
-    body: { userId: string; roleId: string; reason: string }
+    body: { user_id: string; role_id: string; reason: string }
   ): Observable<StaffAssignment> {
     const url = `${this.BASE}/pharmacy/branches/${branchId}/assign`;
     return this.http.post<{ success: boolean; data: StaffAssignment }>(url, body).pipe(
