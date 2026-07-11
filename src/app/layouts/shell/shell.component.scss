@@ -148,37 +148,6 @@ $topbar-h:  64px;
   &:hover { background: var(--color-bg-surface-secondary); }
 }
 
-.search-box {
-  flex: 1;
-  max-width: 400px;
-  position: relative;
-
-  .search-icon {
-    position: absolute;
-    left: 12px; top: 50%;
-    transform: translateY(-50%);
-    color: var(--color-text-muted);
-    font-size: 14px;
-  }
-
-  input {
-    width: 100%;
-    padding: 8px 12px 8px 36px;
-    background: var(--color-bg-surface-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    font-size: 13.5px;
-    color: var(--color-text-primary);
-
-    &::placeholder { color: var(--color-text-muted); }
-    &:focus {
-      outline: none;
-      border-color: var(--color-brand-primary);
-      box-shadow: 0 0 0 2px rgba(20,184,165,0.1);
-    }
-  }
-}
-
 .topbar-right {
   display: flex;
   align-items: center;
@@ -404,7 +373,6 @@ $topbar-h:  64px;
 
   .main-wrap { width: 100%; }
   .hamburger { display: flex; }
-  .search-box { max-width: 220px; }
   .user-info { display: none; }
   .user-chip { padding: 4px; gap: 0; }
 }

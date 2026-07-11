@@ -7,7 +7,7 @@ export const managerRoutes: Routes = [
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
   {
     path: 'dashboard',
-    loadComponent: () => import('./pages/dashboard/manager-dashboard.component').then(m => m.ManagerDashboardComponent),
+    loadComponent: () => import('../../shared/components/dashboard/dashboard.component').then(m => m.DashboardComponent),
   },
   {
     path: 'inventory',

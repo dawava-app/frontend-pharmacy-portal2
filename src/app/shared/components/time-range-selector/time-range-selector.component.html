@@ -1,0 +1,34 @@
+<div class="range-selector">
+  <button
+    type="button"
+    class="range-btn"
+    (click)="toggle()"
+    [attr.aria-expanded]="isOpen()"
+    aria-haspopup="menu"
+  >
+    {{ currentLabel() }}
+    <i class="pi pi-chevron-down chevron" [class.rotated]="isOpen()"></i>
+  </button>
+
+  @if (isOpen()) {
+    <div class="range-backdrop" (click)="close()"></div>
+
+    <div class="range-dropdown" role="menu">
+      @for (opt of options; track opt.key) {
+        <button
+          type="button"
+          role="menuitemradio"
+          class="range-option"
+          [class.active]="opt.key === value()"
+          [attr.aria-checked]="opt.key === value()"
+          (click)="select(opt.key)"
+        >
+          {{ opt.label }}
+          @if (opt.key === value()) {
+            <i class="pi pi-check"></i>
+          }
+        </button>
+      }
+    </div>
+  }
+</div>

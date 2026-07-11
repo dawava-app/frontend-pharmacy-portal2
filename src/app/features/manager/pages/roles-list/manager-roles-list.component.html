@@ -80,9 +80,9 @@
         <tbody>
           @for (role of filtered(); track trackById($index, role)) {
             <tr class="data-row" (click)="viewPermissions(role)">
-              <td class="cell--name">{{ role.name }}</td>
-              <td class="cell--desc">{{ role.description || '—' }}</td>
-              <td>
+              <td class="cell--name" data-label="Role">{{ role.name }}</td>
+              <td class="cell--desc" data-label="Description">{{ role.description || '—' }}</td>
+              <td data-label="Type">
                 @switch (roleTypeBadge(role)) {
                   @case ('system') {
                     <span class="status-badge badge-system"><i class="pi pi-lock"></i> System</span>
@@ -95,13 +95,13 @@
                   }
                 }
               </td>
-              <td>
+              <td data-label="Status">
                 <span class="status-badge" [class.badge-success]="role.isActive" [class.badge-danger]="!role.isActive">
                   {{ role.isActive ? 'Active' : 'Inactive' }}
                 </span>
               </td>
-              <td class="cell--date">{{ role.updatedAt | date:'dd MMM yyyy' }}</td>
-              <td class="cell--actions">
+              <td class="cell--date" data-label="Updated">{{ role.updatedAt | date:'dd MMM yyyy' }}</td>
+              <td class="cell--actions" data-label="Actions">
                 <button class="btn-icon" title="View permissions" (click)="viewPermissions(role, $event)">
                   <i class="pi pi-eye"></i>
                 </button>

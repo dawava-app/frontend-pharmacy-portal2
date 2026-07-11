@@ -8,7 +8,7 @@
       }
       <span>{{ branchLabel() }}</span>
       <span class="sep">•</span>
-      <span class="active">MANAGER DASHBOARD</span>
+      <span class="active">{{ isManager() ? 'MANAGER' : 'STAFF' }} DASHBOARD</span>
     </div>
   </div>
 </div>
@@ -58,70 +58,118 @@
 </div>
 
 <!-- Charts -->
+<div class="charts-toolbar">
+  <h3 class="charts-toolbar-title">Activity Overview</h3>
+  <app-time-range-selector [value]="selectedRange()" (valueChange)="selectedRange.set($event)"/>
+</div>
+
 <div class="charts-row">
   <div class="chart-card">
     <div class="chart-header">
       <h4>Stock Trends</h4>
-      <div class="dropdown-fake">Last 7 Days <i class="pi pi-chevron-down"></i></div>
     </div>
-    <div class="line-chart">
-      <svg width="100%" height="160" viewBox="0 0 548 160" preserveAspectRatio="none">
-        <path [attr.d]="stockTrendPath()" stroke="var(--color-brand-primary)" stroke-width="2.5" fill="none"/>
-      </svg>
-      <div class="chart-labels">
-        @for (d of days(); track $index) { <span>{{ d }}</span> }
+    <p class="chart-summary">
+      <span class="summary-value" [class.negative]="netStockChangeTotal() < 0">
+        {{ netStockChangeTotal() > 0 ? '+' : '' }}{{ netStockChangeTotal() | number }} units
+      </span>
+      net change this period
+    </p>
+
+    @if (chartsLoading()) {
+      <div class="chart-skeleton"></div>
+    } @else if (stockTrendIsEmpty()) {
+      <div class="chart-empty">
+        <i class="pi pi-chart-line"></i>
+        <p>No stock movement in this period.</p>
       </div>
-    </div>
+    } @else {
+      <apx-chart
+        [series]="stockTrendChartOptions().series"
+        [chart]="stockTrendChartOptions().chart"
+        [xaxis]="stockTrendChartOptions().xaxis"
+        [yaxis]="stockTrendChartOptions().yaxis"
+        [stroke]="stockTrendChartOptions().stroke"
+        [fill]="stockTrendChartOptions().fill"
+        [markers]="stockTrendChartOptions().markers"
+        [grid]="stockTrendChartOptions().grid"
+        [tooltip]="stockTrendChartOptions().tooltip"
+        [dataLabels]="stockTrendChartOptions().dataLabels"
+        [colors]="stockTrendChartOptions().colors"
+        [annotations]="stockTrendChartOptions().annotations"
+        [noData]="stockTrendChartOptions().noData"
+      />
+    }
   </div>
 
   <div class="chart-card">
     <div class="chart-header">
       <h4>Transaction Volume</h4>
-      <div class="legend"><span class="ldot"></span> Transactions / day</div>
     </div>
-    <div class="bar-chart">
-      @for (pct of transactionBars(); track $index) {
-        <div class="bar-col">
-          <div class="bar" [style.height.%]="pct"></div>
-          <span class="bar-label">{{ days()[$index] }}</span>
-        </div>
-      }
-    </div>
+    <p class="chart-summary">
+      <span class="summary-value">{{ transactionsTotal() | number }}</span>
+      transactions this period
+    </p>
+
+    @if (chartsLoading()) {
+      <div class="chart-skeleton"></div>
+    } @else if (transactionVolumeIsEmpty()) {
+      <div class="chart-empty">
+        <i class="pi pi-chart-bar"></i>
+        <p>No transactions in this period.</p>
+      </div>
+    } @else {
+      <apx-chart
+        [series]="transactionVolumeChartOptions().series"
+        [chart]="transactionVolumeChartOptions().chart"
+        [xaxis]="transactionVolumeChartOptions().xaxis"
+        [yaxis]="transactionVolumeChartOptions().yaxis"
+        [stroke]="transactionVolumeChartOptions().stroke"
+        [fill]="transactionVolumeChartOptions().fill"
+        [markers]="transactionVolumeChartOptions().markers"
+        [grid]="transactionVolumeChartOptions().grid"
+        [tooltip]="transactionVolumeChartOptions().tooltip"
+        [dataLabels]="transactionVolumeChartOptions().dataLabels"
+        [colors]="transactionVolumeChartOptions().colors"
+        [plotOptions]="transactionVolumeChartOptions().plotOptions"
+      />
+    }
   </div>
 </div>
 
 <!-- Bottom 3-col -->
-<div class="bottom-grid">
+<div class="bottom-grid" [class.bottom-grid--2col]="!isManager()">
   <!-- Staff -->
-  <div class="section-card">
-    <div class="section-head">
-      <h4>Staff Management</h4>
-      <a routerLink="/manager/staff" class="view-all">View All</a>
-    </div>
-    <div class="staff-list">
-      @for (grp of staffGroups; track grp.name) {
-        <div class="staff-item">
-          <div class="staff-icon-wrap">
-            <i class="pi pi-user"></i>
+  @if (isManager()) {
+    <div class="section-card">
+      <div class="section-head">
+        <h4>Staff Management</h4>
+        <a [routerLink]="basePath() + '/staff'" class="view-all">View All</a>
+      </div>
+      <div class="staff-list">
+        @for (grp of staffGroups; track grp.name) {
+          <div class="staff-item">
+            <div class="staff-icon-wrap">
+              <i class="pi pi-user"></i>
+            </div>
+            <div class="staff-info">
+              <p class="staff-name">{{ grp.name }}</p>
+              <p class="staff-count">{{ grp.total }} Total Employees</p>
+            </div>
+            <span class="status-badge" [class.badge-success]="grp.statusClass === 'success'" [class.badge-pending]="grp.statusClass === 'warning'">
+              {{ grp.status }}
+            </span>
           </div>
-          <div class="staff-info">
-            <p class="staff-name">{{ grp.name }}</p>
-            <p class="staff-count">{{ grp.total }} Total Employees</p>
-          </div>
-          <span class="status-badge" [class.badge-success]="grp.statusClass === 'success'" [class.badge-pending]="grp.statusClass === 'warning'">
-            {{ grp.status }}
-          </span>
-        </div>
-      }
+        }
+      </div>
+      <p class="staff-note">Demo data — connect a staff endpoint to make this live.</p>
     </div>
-    <p class="staff-note">Demo data — connect a staff endpoint to make this live.</p>
-  </div>
+  }
 
   <!-- Most Active Medicines -->
   <div class="section-card">
     <div class="section-head">
       <h4>Most Active Medicines</h4>
-      <a routerLink="/manager/sales" class="view-all">View All</a>
+      <a [routerLink]="basePath() + '/sales'" class="view-all">View All</a>
     </div>
     <div class="medicine-list">
       @if (topActive().length === 0) {
@@ -149,7 +197,7 @@
   <div class="section-card">
     <div class="section-head">
       <h4>Branch Location</h4>
-      <a routerLink="/manager/settings" class="view-all">{{ branchLabel() }} <i class="pi pi-chevron-right"></i></a>
+      <a [routerLink]="basePath() + '/settings'" class="view-all">{{ branchLabel() }} <i class="pi pi-chevron-right"></i></a>
     </div>
     <div class="map-container">
       <app-map [lat]="branchLat()" [lng]="branchLng()" [label]="branchLabel()"/>
@@ -168,7 +216,7 @@
       <h4>Low Stock Alerts</h4>
       <span class="badge-count">{{ lowStockItems().length }} Items</span>
     </div>
-    <a routerLink="/manager/inventory" class="view-all">View in Inventory <i class="pi pi-chevron-right"></i></a>
+    <a [routerLink]="basePath() + '/inventory'" class="view-all">View in Inventory <i class="pi pi-chevron-right"></i></a>
   </div>
   <div class="table-scroll">
     @if (lowStockItems().length === 0) {

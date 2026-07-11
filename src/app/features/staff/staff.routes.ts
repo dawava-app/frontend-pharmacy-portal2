@@ -7,7 +7,7 @@ export const staffRoutes: Routes = [
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
   {
     path: 'dashboard',
-    loadComponent: () => import('./pages/dashboard/staff-dashboard.component').then(m => m.StaffDashboardComponent),
+    loadComponent: () => import('../../shared/components/dashboard/dashboard.component').then(m => m.DashboardComponent),
   },
   {
     path: 'inventory',
