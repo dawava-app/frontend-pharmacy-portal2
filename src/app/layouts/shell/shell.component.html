@@ -14,6 +14,14 @@
       </div>
     </div>
 
+    <!-- Workspace switcher (manager/staff only) — always visible regardless of
+         dashboard access, so switching branches is available from any page. -->
+    @if (auth.userRole() !== 'admin') {
+      <div class="sidebar-workspace">
+        <app-branch-switcher />
+      </div>
+    }
+
     <!-- Nav -->
     <nav class="sidebar-nav">
       @for (item of navItems(); track item.route) {
@@ -52,11 +60,6 @@
 
       <!-- Right actions -->
       <div class="topbar-right">
-        <!-- Workspace switcher (manager/staff only, Dashboard pages only) -->
-        @if (auth.userRole() !== 'admin' && isDashboardRoute()) {
-          <app-branch-switcher />
-        }
-
         <!-- User / account menu -->
         <div class="account-menu-wrap">
           <button class="user-chip" (click)="toggleAccountMenu($event)">

@@ -4,7 +4,7 @@ const placeholder = () =>
   import('../../shared/components/coming-soon/coming-soon.component').then(m => m.ComingSoonComponent);
 
 export const adminRoutes: Routes = [
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+  { path: '', redirectTo: 'onboarding', pathMatch: 'full' },
   {
     path: 'dashboard',
     loadComponent: () => import('./pages/dashboard/admin-dashboard.component').then(m => m.AdminDashboardComponent),

@@ -38,7 +38,13 @@
     <!-- backdrop to close dropdown on outside click -->
     <div class="dropdown-backdrop" (click)="close()"></div>
 
-    <div class="workspace-dropdown" role="menu" (keydown)="onOptionKeydown($event)">
+    <div
+      class="workspace-dropdown"
+      role="menu"
+      [style.top.px]="dropdownPos()?.top"
+      [style.left.px]="dropdownPos()?.left"
+      (keydown)="onOptionKeydown($event)"
+    >
       <p class="dropdown-header">Switch Workspace</p>
 
       @if (loadingDetails()) {

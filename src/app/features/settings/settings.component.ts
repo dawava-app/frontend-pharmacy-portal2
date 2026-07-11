@@ -1,5 +1,5 @@
 import {
-  Component, inject, computed, signal, OnInit, ElementRef, ViewChild, HostListener,
+  Component, inject, computed, signal, effect, untracked, OnInit, ElementRef, ViewChild, HostListener,
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -137,6 +137,27 @@ export class SettingsComponent implements OnInit {
     };
   });
 
+  constructor() {
+    // Pharmacy Information is scoped to the active pharmacy, not the active branch —
+    // switching between branches of the *same* pharmacy shouldn't refetch it, but
+    // switching into a branch under a *different* pharmacy must. Reacting to
+    // currentPharmacyId() (rather than currentBranchId()) gets both right and avoids
+    // redundant requests, mirroring the effect-driven reload pattern used by
+    // Dashboard/Sales/Staff Management for their own branch-scoped data.
+    effect(() => {
+      const pharmacyId = this.auth.currentPharmacyId();
+      if (!pharmacyId || !this.isManager()) return;
+
+      // loadPharmacyData() reads (and later writes) PharmacyService's own
+      // "loaded" cache flags internally — without untracked(), those reads
+      // would make the effect depend on its own eventual writes, causing an
+      // infinite reload loop (fetch completes -> flag flips -> effect
+      // reruns -> resets flag -> refetches -> ...). Only pharmacyId/role
+      // changes should ever re-trigger this effect.
+      untracked(() => this.loadPharmacyData(pharmacyId));
+    });
+  }
+
   ngOnInit(): void {
     if (!this.userProfileSvc.profileLoaded()) {
       this.userProfileSvc.loadProfile().subscribe();
@@ -145,20 +166,18 @@ export class SettingsComponent implements OnInit {
       this.branchLoading.set(true);
       this.userProfileSvc.loadBranch().subscribe(() => this.branchLoading.set(false));
     }
-    if (this.isManager()) {
-      this.loadPharmacyData();
-    }
   }
 
-  private loadPharmacyData(): void {
-    const pharmacyId = this.auth.currentPharmacyId();
-    if (!pharmacyId) return;
+  private loadPharmacyData(pharmacyId: string): void {
+    // Force-bypass the service's own "already loaded" cache — it exists to dedupe
+    // calls for the *same* pharmacy, not to survive a pharmacy change.
+    this.pharmacySvc.pharmacyLoaded.set(false);
 
     this.pharmacyLoading.set(true);
     this.pharmacySvc.loadPharmacy(pharmacyId).subscribe(() => this.pharmacyLoading.set(false));
 
     this.pharmacyBranchesLoading.set(true);
-    this.pharmacySvc.loadPharmacyBranches(pharmacyId).subscribe(() => this.pharmacyBranchesLoading.set(false));
+    this.pharmacySvc.loadPharmacyBranches(pharmacyId, true).subscribe(() => this.pharmacyBranchesLoading.set(false));
   }
 
   setTab(t: Tab): void {

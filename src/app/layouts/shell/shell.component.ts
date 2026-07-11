@@ -1,7 +1,5 @@
 import { Component, inject, computed, signal, OnInit, HostListener } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationEnd } from '@angular/router';
-import { filter, map } from 'rxjs';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { ChatUnreadService } from '../../core/services/chat-unread.service';
@@ -27,18 +25,6 @@ export class ShellComponent implements OnInit {
   sidebarOpen        = signal(false);
   showAccountMenu    = signal(false);
   showAvatarPreview  = signal(false);
-
-  // Workspace Switcher should only appear on Dashboard pages — track the active
-  // route reactively since the shell itself is never re-created on navigation.
-  private readonly currentUrl = toSignal(
-    this.router.events.pipe(
-      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-      map(e => e.urlAfterRedirects),
-    ),
-    { initialValue: this.router.url },
-  );
-
-  isDashboardRoute = computed(() => this.currentUrl().split('?')[0].split('#')[0].endsWith('/dashboard'));
 
   // Messages nav badge refresh disabled: per-conversation unread-count fan-out
   // was firing N+1 requests on every route change. Re-enable once there's a

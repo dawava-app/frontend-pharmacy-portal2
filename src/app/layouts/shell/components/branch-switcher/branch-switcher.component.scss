@@ -1,3 +1,7 @@
+:host {
+  display: block;
+}
+
 .workspace-switcher {
   position: relative;
 }
@@ -8,20 +12,19 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 5px 12px 5px 6px;
-  background: var(--color-bg-surface-secondary);
-  border: 1.5px solid var(--color-border);
+  padding: 5px 10px 5px 6px;
+  width: 100%;
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(255,255,255,0.14);
   border-radius: 12px;
-  color: var(--color-text-primary);
+  color: #fff;
   cursor: pointer;
   white-space: nowrap;
-  max-width: 230px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, transform 0.15s ease;
 
   &:hover:not(:disabled):not(.single) {
-    border-color: var(--color-brand-primary);
-    box-shadow: 0 2px 10px rgba(20,184,165,0.14);
-    transform: translateY(-1px);
+    background: rgba(255,255,255,0.14);
+    border-color: rgba(255,255,255,0.28);
   }
 
   &:active:not(:disabled):not(.single) {
@@ -71,7 +74,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--color-text-muted);
+  color: rgba(255,255,255,0.6);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -85,9 +88,9 @@
   max-width: 100%;
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: #fff;
 
-  i { font-size: 10px; flex-shrink: 0; color: var(--color-text-muted); }
+  i { font-size: 10px; flex-shrink: 0; color: rgba(255,255,255,0.6); }
 }
 
 .branch-name {
@@ -98,7 +101,7 @@
 
 .chevron {
   font-size: 10px;
-  color: var(--color-text-muted);
+  color: rgba(255,255,255,0.6);
   transition: transform 0.2s ease;
   flex-shrink: 0;
 }
@@ -110,13 +113,17 @@
 .switch-spinner {
   width: 13px;
   height: 13px;
-  border: 2px solid var(--color-border);
-  border-top-color: var(--color-brand-primary);
+  border: 2px solid rgba(255,255,255,0.25);
+  border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
   flex-shrink: 0;
 
-  &.small { width: 12px; height: 12px; border-width: 1.5px; }
+  &.small {
+    width: 12px; height: 12px; border-width: 1.5px;
+    border-color: var(--color-border);
+    border-top-color: var(--color-brand-primary);
+  }
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -132,9 +139,11 @@
 /* ── Dropdown shell ──────────────────────────────────────────────────── */
 
 .workspace-dropdown {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
+  // Fixed + JS-computed top/left (see component) rather than absolute — the
+  // trigger now lives inside the sidebar, which clips absolutely-positioned
+  // overflow via overflow-x: hidden. Fixed positioning escapes that clip and
+  // lets the dropdown float over the main content regardless of sidebar width.
+  position: fixed;
   width: 300px;
   max-width: min(90vw, 320px);
   background: var(--color-bg-card);
@@ -403,17 +412,5 @@
   &:focus-visible {
     outline: 2px solid var(--color-brand-primary);
     outline-offset: -2px;
-  }
-}
-
-@media (max-width: 768px) {
-  .pharmacy-line { display: none; }
-  .workspace-btn { max-width: 150px; }
-
-  // Re-anchor to the right edge as soon as the trigger itself starts shrinking,
-  // so the dropdown can't run off the right side of the viewport at tablet widths.
-  .workspace-dropdown {
-    left: auto;
-    right: -8px;
   }
 }

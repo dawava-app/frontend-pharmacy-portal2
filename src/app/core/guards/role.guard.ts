@@ -8,7 +8,7 @@ import { UserRole } from '../../shared/models/user.model';
 
 function resolveTree(role: UserRole | null, allowed: UserRole, router: Router): true | UrlTree {
   if (role === allowed)   return true;
-  if (role === 'admin')   return router.createUrlTree(['/admin/dashboard']);
+  if (role === 'admin')   return router.createUrlTree(['/admin/onboarding']);
   if (role === 'manager') return router.createUrlTree(['/manager/dashboard']);
   return router.createUrlTree(['/staff/dashboard']);
 }

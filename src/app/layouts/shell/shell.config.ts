@@ -1,11 +1,6 @@
 import { NavItem } from '../../shared/models/nav.model';
 
 export const ADMIN_NAV: NavItem[] = [
-  { label: 'Dashboard',         icon: 'pi pi-home',         route: '/admin/dashboard' },
-  { label: 'Inventory Control', icon: 'pi pi-box',          route: '/admin/inventory' },
-  { label: 'Pharmacy Branches', icon: 'pi pi-building',     route: '/admin/branches' },
-  { label: 'Staff Management',  icon: 'pi pi-users',        route: '/admin/staff' },
-  { label: 'Transactions',      icon: 'pi pi-credit-card',  route: '/admin/transactions' },
   { label: 'Onboarding',        icon: 'pi pi-user-plus',    route: '/admin/onboarding' },
   { label: 'Roles & Permissions', icon: 'pi pi-shield',      route: '/admin/roles' },
 ];

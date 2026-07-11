@@ -20,6 +20,14 @@ export class BranchSwitcherComponent {
   makingDefault = signal<string | null>(null);
   error         = signal('');
 
+  /** Fixed-position coordinates for the dropdown, computed from the trigger's
+   *  bounding rect on open — needed because the trigger now lives inside the
+   *  sidebar, whose overflow-x: hidden would clip an absolutely-positioned
+   *  dropdown that overflows the sidebar's width. */
+  dropdownPos = signal<{ top: number; left: number } | null>(null);
+  private static readonly DROPDOWN_WIDTH = 300;
+  private static readonly VIEWPORT_MARGIN = 8;
+
   hasMultipleBranches = computed(() => this.workspaceSvc.hasMultipleBranches());
   loadingDetails       = computed(() => this.workspaceSvc.loading());
   groupedWorkspaces     = computed(() => this.workspaceSvc.groupedWorkspaces());
@@ -48,11 +56,26 @@ export class BranchSwitcherComponent {
     this.isOpen.set(opening);
     if (opening) {
       this.error.set('');
+      this.updateDropdownPos();
       this.workspaceSvc.loadBranchDetails().subscribe();
     }
   }
 
   close(): void { this.isOpen.set(false); }
+
+  private updateDropdownPos(): void {
+    const rect = this.elementRef.nativeElement.getBoundingClientRect();
+    const maxLeft = window.innerWidth - BranchSwitcherComponent.DROPDOWN_WIDTH - BranchSwitcherComponent.VIEWPORT_MARGIN;
+    const left = Math.max(BranchSwitcherComponent.VIEWPORT_MARGIN, Math.min(rect.left, maxLeft));
+    this.dropdownPos.set({ top: rect.bottom + 10, left });
+  }
+
+  /** The trigger moves (or the layout reflows) independently of the dropdown's
+   *  fixed position — close rather than risk a stale, detached dropdown. */
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    if (this.isOpen()) this.close();
+  }
 
   switchTo(branchId: string): void {
     if (branchId === this.currentBranchId() || this.switching()) { this.close(); return; }

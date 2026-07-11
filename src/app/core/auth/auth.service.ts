@@ -206,7 +206,7 @@ export class AuthService {
 
   navigateByRole(): void {
     const role = this.userRole();
-    if (role === 'admin')        this.router.navigate(['/admin/dashboard']);
+    if (role === 'admin')        this.router.navigate(['/admin/onboarding']);
     else if (role === 'manager') this.router.navigate(['/manager/dashboard']);
     else                         this.router.navigate(['/staff/dashboard']);
   }
