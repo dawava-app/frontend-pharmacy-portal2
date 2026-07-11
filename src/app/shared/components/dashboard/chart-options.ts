@@ -40,6 +40,16 @@ interface Theme {
   tooltipTheme: 'light' | 'dark';
 }
 
+export interface ChartSeriesConfig {
+  seriesName: string;
+  /** Formats a raw value for the tooltip, e.g. "1,234 units" or "SAR 1,234". */
+  valueFormatter: (val: number) => string;
+  /** Only meaningful for the line chart — draws a y=0 reference line. Only
+   *  set this when the series can genuinely go negative; a metric that's
+   *  always >= 0 (levels, counts, money) doesn't need one. */
+  showZeroBaseline?: boolean;
+}
+
 /** Mirrors the exact hex values in styles.scss so the charts always match the
  *  app's single teal theme in both light and dark mode. */
 function resolveTheme(isDark: boolean): Theme {
@@ -54,6 +64,11 @@ function baseXAxis(theme: Theme): ApexXAxis {
     labels: {
       style: { colors: theme.textColor, fontSize: '10px', fontWeight: 600 },
       datetimeFormatter: { day: 'dd MMM' },
+      // ApexCharts defaults to formatting datetime axes in UTC. Our points
+      // are local-midnight timestamps, so with the default (true) a point
+      // meant to represent "11 Jul locally" (= 10 Jul 21:00 UTC in UTC+3)
+      // gets labeled "10 Jul" instead. Force local-timezone formatting.
+      datetimeUTC: false,
     },
     axisBorder: { show: false },
     axisTicks: { show: false },
@@ -78,11 +93,11 @@ function baseGrid(theme: Theme): ApexGrid {
   };
 }
 
-function baseTooltip(theme: Theme, valueLabel: string): ApexTooltip {
+function baseTooltip(theme: Theme, valueFormatter: (val: number) => string): ApexTooltip {
   return {
     theme: theme.tooltipTheme,
     x: { format: 'dd MMM yyyy' },
-    y: { formatter: (val: number) => `${val.toLocaleString()} ${valueLabel}` },
+    y: { formatter: valueFormatter },
   };
 }
 
@@ -95,15 +110,15 @@ function baseNoData(theme: Theme): ApexNoData {
   };
 }
 
-/** Stock Trends: net daily stock change — can be positive or negative, so it
- *  gets a zero-reference baseline. Single teal series, area-filled line. */
-export function buildLineChartOptions(points: ChartPoint[], isDark: boolean): ApexBundle {
+/** Area-filled line chart, single teal series. Pass showZeroBaseline: true
+ *  only for series that can go negative (e.g. a net change/delta metric). */
+export function buildLineChartOptions(points: ChartPoint[], isDark: boolean, config: ChartSeriesConfig): ApexBundle {
   const theme = resolveTheme(isDark);
   const data = points.map(p => ({ x: new Date(p.date).getTime(), y: p.value }));
   const markerSize = points.length > 60 ? 0 : 4;
 
   return {
-    series: [{ name: 'Net Stock Change', data }],
+    series: [{ name: config.seriesName, data }],
     chart: {
       type: 'area',
       height: 160,
@@ -121,10 +136,10 @@ export function buildLineChartOptions(points: ChartPoint[], isDark: boolean): Ap
     },
     markers: { size: markerSize, strokeWidth: 0, hover: { size: 7 } },
     grid: baseGrid(theme),
-    tooltip: baseTooltip(theme, 'units'),
+    tooltip: baseTooltip(theme, config.valueFormatter),
     dataLabels: { enabled: false },
     colors: [theme.teal],
-    annotations: {
+    annotations: config.showZeroBaseline ? {
       yaxis: [{
         y: 0,
         borderColor: theme.gridColor,
@@ -135,20 +150,19 @@ export function buildLineChartOptions(points: ChartPoint[], isDark: boolean): Ap
           style: { color: theme.textColor, background: 'transparent', fontSize: '10px' },
         },
       }],
-    },
+    } : {},
     noData: baseNoData(theme),
     plotOptions: {},
   };
 }
 
-/** Transaction Volume: daily transaction counts — never negative, so no
- *  zero-baseline annotation is needed. Single teal series, rounded columns. */
-export function buildBarChartOptions(points: ChartPoint[], isDark: boolean): ApexBundle {
+/** Rounded-column bar chart, single teal series. */
+export function buildBarChartOptions(points: ChartPoint[], isDark: boolean, config: ChartSeriesConfig): ApexBundle {
   const theme = resolveTheme(isDark);
   const data = points.map(p => ({ x: new Date(p.date).getTime(), y: p.value }));
 
   return {
-    series: [{ name: 'Transactions', data }],
+    series: [{ name: config.seriesName, data }],
     chart: {
       type: 'bar',
       height: 160,
@@ -163,7 +177,7 @@ export function buildBarChartOptions(points: ChartPoint[], isDark: boolean): Ape
     fill: { type: 'solid', opacity: 1 },
     markers: {},
     grid: baseGrid(theme),
-    tooltip: baseTooltip(theme, 'transactions'),
+    tooltip: baseTooltip(theme, config.valueFormatter),
     dataLabels: { enabled: false },
     colors: [theme.teal],
     annotations: {},

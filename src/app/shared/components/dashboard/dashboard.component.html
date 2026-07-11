@@ -1,3 +1,10 @@
+@if (!hasDashboardGuard()) {
+  <div class="no-access">
+    <div class="no-access-icon"><i class="pi pi-lock"></i></div>
+    <h3>You don't have access to the dashboard</h3>
+    <p>Please contact your administrator if you believe this is a mistake.</p>
+  </div>
+} @else {
 <!-- Header -->
 <div class="page-header">
   <div>
@@ -10,6 +17,10 @@
       <span class="sep">•</span>
       <span class="active">{{ isManager() ? 'MANAGER' : 'STAFF' }} DASHBOARD</span>
     </div>
+  </div>
+  <div class="today-date">
+    <i class="pi pi-calendar"></i>
+    {{ today | date:'EEEE, d MMMM y' }}
   </div>
 </div>
 
@@ -41,19 +52,33 @@
       </div>
     </div>
 
-    <div class="analytics-card">
-      <div class="card-icon-wrap teal"><i class="pi pi-wallet"></i></div>
-      <div class="card-body">
-        <p class="card-label">Stock Value Change (Today)</p>
-        <h2 class="card-value">
-          {{ (summary()?.valueChangeToday ?? 0) | currency:(summary()?.currencyCode || 'SAR'):'symbol':'1.0-0' }}
-        </h2>
-        <div class="card-change" [class.up]="(summary()?.valueChangeToday ?? 0) >= 0">
-          <i class="pi" [class.pi-arrow-up]="(summary()?.valueChangeToday ?? 0) >= 0" [class.pi-arrow-down]="(summary()?.valueChangeToday ?? 0) < 0"></i>
-          {{ summary()?.transactionsTodayCount ?? 0 }} transaction{{ (summary()?.transactionsTodayCount ?? 0) !== 1 ? 's' : '' }} today
+    @if (isManager()) {
+      <div class="analytics-card">
+        <div class="card-icon-wrap teal"><i class="pi pi-wallet"></i></div>
+        <div class="card-body">
+          <p class="card-label">Total Daily Revenue</p>
+          <h2 class="card-value">
+            {{ (revenueToday()?.currentValue ?? 0) | currency:currencyCode():'symbol':'1.0-0' }}
+          </h2>
+          <div class="card-change" [class.up]="(revenueToday()?.changePercentage ?? 0) >= 0">
+            <i class="pi" [class.pi-arrow-up]="(revenueToday()?.changePercentage ?? 0) >= 0" [class.pi-arrow-down]="(revenueToday()?.changePercentage ?? 0) < 0"></i>
+            {{ (revenueToday()?.changePercentage ?? 0) | number:'1.0-1' }}% vs previous period
+          </div>
         </div>
       </div>
-    </div>
+    } @else {
+      <div class="analytics-card">
+        <div class="card-icon-wrap teal"><i class="pi pi-shopping-cart"></i></div>
+        <div class="card-body">
+          <p class="card-label">Sales Today</p>
+          <h2 class="card-value">{{ (salesCountToday()?.currentValue ?? 0) | number }}</h2>
+          <div class="card-change" [class.up]="(salesCountToday()?.changePercentage ?? 0) >= 0">
+            <i class="pi" [class.pi-arrow-up]="(salesCountToday()?.changePercentage ?? 0) >= 0" [class.pi-arrow-down]="(salesCountToday()?.changePercentage ?? 0) < 0"></i>
+            {{ (salesCountToday()?.changePercentage ?? 0) | number:'1.0-1' }}% vs previous period
+          </div>
+        </div>
+      </div>
+    }
   }
 </div>
 
@@ -69,10 +94,10 @@
       <h4>Stock Trends</h4>
     </div>
     <p class="chart-summary">
-      <span class="summary-value" [class.negative]="netStockChangeTotal() < 0">
-        {{ netStockChangeTotal() > 0 ? '+' : '' }}{{ netStockChangeTotal() | number }} units
+      <span class="summary-value" [class.negative]="stockLevelDelta() < 0">
+        {{ stockLevelDelta() > 0 ? '+' : '' }}{{ stockLevelDelta() | number }} units
       </span>
-      net change this period
+      change this period
     </p>
 
     @if (chartsLoading()) {
@@ -103,34 +128,39 @@
 
   <div class="chart-card">
     <div class="chart-header">
-      <h4>Transaction Volume</h4>
+      <h4>{{ isManager() ? 'Revenue Trend' : 'Sales Volume' }}</h4>
     </div>
     <p class="chart-summary">
-      <span class="summary-value">{{ transactionsTotal() | number }}</span>
-      transactions this period
+      @if (isManager()) {
+        <span class="summary-value">{{ secondaryChartSummaryValue() | currency:currencyCode():'symbol':'1.0-0' }}</span>
+        revenue this period
+      } @else {
+        <span class="summary-value">{{ secondaryChartSummaryValue() | number }}</span>
+        sales this period
+      }
     </p>
 
     @if (chartsLoading()) {
       <div class="chart-skeleton"></div>
-    } @else if (transactionVolumeIsEmpty()) {
+    } @else if (secondaryChartIsEmpty()) {
       <div class="chart-empty">
         <i class="pi pi-chart-bar"></i>
-        <p>No transactions in this period.</p>
+        <p>No {{ isManager() ? 'revenue' : 'sales' }} in this period.</p>
       </div>
     } @else {
       <apx-chart
-        [series]="transactionVolumeChartOptions().series"
-        [chart]="transactionVolumeChartOptions().chart"
-        [xaxis]="transactionVolumeChartOptions().xaxis"
-        [yaxis]="transactionVolumeChartOptions().yaxis"
-        [stroke]="transactionVolumeChartOptions().stroke"
-        [fill]="transactionVolumeChartOptions().fill"
-        [markers]="transactionVolumeChartOptions().markers"
-        [grid]="transactionVolumeChartOptions().grid"
-        [tooltip]="transactionVolumeChartOptions().tooltip"
-        [dataLabels]="transactionVolumeChartOptions().dataLabels"
-        [colors]="transactionVolumeChartOptions().colors"
-        [plotOptions]="transactionVolumeChartOptions().plotOptions"
+        [series]="secondaryChartOptions().series"
+        [chart]="secondaryChartOptions().chart"
+        [xaxis]="secondaryChartOptions().xaxis"
+        [yaxis]="secondaryChartOptions().yaxis"
+        [stroke]="secondaryChartOptions().stroke"
+        [fill]="secondaryChartOptions().fill"
+        [markers]="secondaryChartOptions().markers"
+        [grid]="secondaryChartOptions().grid"
+        [tooltip]="secondaryChartOptions().tooltip"
+        [dataLabels]="secondaryChartOptions().dataLabels"
+        [colors]="secondaryChartOptions().colors"
+        [plotOptions]="secondaryChartOptions().plotOptions"
       />
     }
   </div>
@@ -146,22 +176,30 @@
         <a [routerLink]="basePath() + '/staff'" class="view-all">View All</a>
       </div>
       <div class="staff-list">
-        @for (grp of staffGroups; track grp.name) {
+        @if (recentStaff().length === 0) {
+          <p class="staff-note">No staff members assigned to this branch yet.</p>
+        }
+        @for (person of recentStaff(); track person.id) {
           <div class="staff-item">
             <div class="staff-icon-wrap">
-              <i class="pi pi-user"></i>
+              @if (person.avatarUrl) {
+                <img [src]="person.avatarUrl" alt="" class="staff-avatar-img"/>
+              } @else {
+                <div class="staff-avatar-initials" [style.background-color]="staffAvatarColor(person.fullName || person.username)">
+                  {{ staffInitials(person.fullName || person.username) }}
+                </div>
+              }
             </div>
             <div class="staff-info">
-              <p class="staff-name">{{ grp.name }}</p>
-              <p class="staff-count">{{ grp.total }} Total Employees</p>
+              <p class="staff-name">{{ person.fullName || person.username }}</p>
+              <p class="staff-count">{{ person.roleName || 'Staff' }}</p>
             </div>
-            <span class="status-badge" [class.badge-success]="grp.statusClass === 'success'" [class.badge-pending]="grp.statusClass === 'warning'">
-              {{ grp.status }}
+            <span class="status-badge" [class.badge-success]="person.isActive" [class.badge-pending]="!person.isActive">
+              {{ person.isActive ? 'Active' : 'Inactive' }}
             </span>
           </div>
         }
       </div>
-      <p class="staff-note">Demo data — connect a staff endpoint to make this live.</p>
     </div>
   }
 
@@ -252,3 +290,4 @@
     }
   </div>
 </div>
+}

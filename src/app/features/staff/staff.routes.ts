@@ -8,7 +8,6 @@ export const staffRoutes: Routes = [
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
   {
     path: 'dashboard',
-    canActivate: [securityGuard('dashboard')],
     loadComponent: () => import('../../shared/components/dashboard/dashboard.component').then(m => m.DashboardComponent),
   },
   {

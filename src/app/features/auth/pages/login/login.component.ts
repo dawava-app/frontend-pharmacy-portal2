@@ -8,11 +8,13 @@ import { ThemeService } from '../../../../core/services/theme.service';
  * Login flow (per API docs):
  *
  * 1. POST /auth/login — the response already resolves a default, fully-scoped
- *    access_token (its branch_id/pharmacy_id claims + res.scope + res.has_dashboard_access
- *    describe that default branch), even when the account has multiple branches.
+ *    access_token (its branch_id/pharmacy_id claims + res.scope), even when the
+ *    account has multiple branches. The token's `guard` claim is decoded by
+ *    AuthService and drives per-section access (see securityGuard/hasGuard).
  * 2. GET /auth/me  → resolve role
- * 3. If has_dashboard_access → navigateByRole()
- *    else → show "no access" error
+ * 3. navigateByRole() — if the account lacks the 'dashboard' guard, the
+ *    dashboard page itself renders a "no access" state instead of blocking
+ *    login.
  *
  * Switching to a different branch afterward is handled by the Workspace Switcher
  * in the dashboard navbar — login never needs to ask the user to pick one.
@@ -50,7 +52,7 @@ export class LoginComponent {
     const { identifier, password } = this.form.value;
 
     this.auth.login({ identifier: identifier!, password: password! }).subscribe({
-      next: res => this.loadProfileAndNavigate(res.has_dashboard_access),
+      next: () => this.loadProfileAndNavigate(),
       error: err => {
         this.loading.set(false);
         const msg = err?.error?.message || err?.error?.detail;
@@ -61,17 +63,8 @@ export class LoginComponent {
     });
   }
 
-  private loadProfileAndNavigate(hasDashboardAccess: boolean): void {
+  private loadProfileAndNavigate(): void {
     const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-    const isJoinFlow = returnUrl?.startsWith('/join');
-    const isOnboardingFlow = returnUrl?.startsWith('/onboarding');
-
-    // If the user is accepting an invitation or going to onboarding, skip the dashboard-access check
-    if (!hasDashboardAccess && !isJoinFlow && !isOnboardingFlow) {
-      this.loading.set(false);
-      this.error.set('Your account does not have access to this dashboard. Please contact your administrator.');
-      return;
-    }
 
     this.auth.fetchMe().subscribe({
       next:  () => {

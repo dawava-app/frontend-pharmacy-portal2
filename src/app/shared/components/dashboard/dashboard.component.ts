@@ -7,22 +7,29 @@ import { ThemeService } from '../../../core/services/theme.service';
 import { OnboardingStateService } from '../../../features/onboarding/services/onboarding-state.service';
 import { UserProfileService } from '../../services/user-profile.service';
 import { InventoryService } from '../../services/inventory.service';
+import { StaffManagementService, StaffAssignment } from '../../../core/services/staff-management.service';
+import { FileService } from '../../../core/services/file.service';
 import { MapComponent } from '../map/map.component';
 import { TimeRangeSelectorComponent } from '../time-range-selector/time-range-selector.component';
 import {
   InventorySummary,
   InventoryItem,
-  DailyTimelinePoint,
   TopActiveVariant,
+  DashboardAnalytics,
 } from '../../models/inventory.model';
-import { ChartPoint, TimeRangeKey, timeRangeDays } from '../../models/chart.model';
-import { zeroFillDailyRange, dailyRangeBounds } from '../../utils/chart-data.util';
+import { TimeRangeKey, timeRangeDays } from '../../models/chart.model';
+import { dailyRangeBounds, toLocalIsoDateTime } from '../../utils/chart-data.util';
+import { getInitials, avatarColorFor } from '../../utils/avatar.util';
 import { buildLineChartOptions, buildBarChartOptions } from './chart-options';
 import { catchError, of } from 'rxjs';
 
 /** Fixed lookback window for "Most Active Medicines" — independent of the
  *  charts' time-range selector so that control only affects the two charts. */
 const TOP_ACTIVE_WINDOW_DAYS = 7;
+
+/** How many staff members the dashboard preview card shows — "View All"
+ *  links to the full Staff Management page for the rest. */
+const RECENT_STAFF_LIMIT = 3;
 
 @Component({
   selector: 'app-dashboard',
@@ -36,10 +43,15 @@ export class DashboardComponent implements OnInit {
   private readonly state          = inject(OnboardingStateService);
   private readonly userProfileSvc = inject(UserProfileService);
   private readonly inventorySvc   = inject(InventoryService);
+  private readonly staffSvc       = inject(StaffManagementService);
+  private readonly fileSvc        = inject(FileService);
   private readonly theme          = inject(ThemeService);
 
   isManager = computed(() => this.auth.userRole() === 'manager');
   basePath  = computed(() => `/${this.auth.userRole() ?? 'staff'}`);
+
+  /** Decoded from the JWT `guard` claim — gates the whole dashboard view. */
+  hasDashboardGuard = computed(() => this.auth.hasGuard('dashboard'));
 
   firstName = computed(() => {
     const name = this.userProfileSvc.profile()?.fullName
@@ -64,6 +76,8 @@ export class DashboardComponent implements OnInit {
   branchLat = computed(() => this.userProfileSvc.branchLat());
   branchLng = computed(() => this.userProfileSvc.branchLng());
 
+  today = new Date();
+
   ngOnInit(): void {
     if (!this.userProfileSvc.profileLoaded()) {
       this.userProfileSvc.loadProfile().subscribe();
@@ -79,55 +93,93 @@ export class DashboardComponent implements OnInit {
   summary = signal<InventorySummary | null>(null);
   topActive = signal<TopActiveVariant[]>([]);
   lowStockItems = signal<InventoryItem[]>([]);
+  recentStaff = signal<StaffAssignment[]>([]);
 
-  staffGroups = [
-    { name: 'Pharmacists', total: 28, status: 'All On Duty', statusClass: 'success' },
-    { name: 'Technicians', total: 15, status: '1 On Leave',  statusClass: 'warning' },
-  ];
+  /** Revenue/sales snapshot fixed to today — independent of the charts'
+   *  time-range selector, same as the other top analytics cards. */
+  todayAnalytics = signal<DashboardAnalytics | null>(null);
+
+  currencyCode = computed(() =>
+    this.todayAnalytics()?.currency || this.summary()?.currencyCode || 'SAR'
+  );
+  revenueToday    = computed(() => this.todayAnalytics()?.summary.revenue ?? null);
+  salesCountToday = computed(() => this.todayAnalytics()?.summary.salesCount ?? null);
 
   /* ---------- Charts ---------- */
 
   selectedRange = signal<TimeRangeKey>('7d');
   chartsLoading = signal(true);
 
-  /** Adapter output only — the one place that knows the current backend DTO
-   *  shape. Swapping in a dedicated chart endpoint later only touches
-   *  loadChartsData() and these two adapters below. */
-  private rawStockTrend        = signal<ChartPoint[]>([]);
-  private rawTransactionVolume = signal<ChartPoint[]>([]);
+  /** Backs both charts and their summary lines for the selected range. This
+   *  is the only place that reads the analytics DTO — swapping backend
+   *  shapes later only touches loadChartsData() and the point-mapping
+   *  computeds directly below it. */
+  private rangeAnalytics = signal<DashboardAnalytics | null>(null);
 
-  private chartRangeBounds = computed(() => dailyRangeBounds(timeRangeDays(this.selectedRange())));
+  stockTrendPoints = computed(() =>
+    (this.rangeAnalytics()?.stockTimeline ?? []).map(p => ({ date: p.date, value: p.totalQuantity }))
+  );
 
-  stockTrendPoints = computed(() => {
-    const { start, end } = this.chartRangeBounds();
-    return zeroFillDailyRange(this.rawStockTrend(), start, end);
+  /** Change in stock level from the start to the end of the selected range —
+   *  a snapshot metric, so a sum wouldn't mean anything; the delta does. */
+  stockLevelDelta = computed(() => {
+    const pts = this.stockTrendPoints();
+    if (pts.length < 2) return 0;
+    return pts[pts.length - 1].value - pts[0].value;
   });
 
-  transactionVolumePoints = computed(() => {
-    const { start, end } = this.chartRangeBounds();
-    return zeroFillDailyRange(this.rawTransactionVolume(), start, end);
+  /** Stock level is a snapshot, not activity — even an all-zero (fully out of
+   *  stock) run is meaningful and should render, not be replaced by an empty
+   *  state. Only "no data came back at all" counts as empty here. */
+  stockTrendIsEmpty = computed(() => this.stockTrendPoints().length === 0);
+
+  revenueTrendPoints = computed(() =>
+    (this.rangeAnalytics()?.salesTimeline ?? []).map(p => ({ date: p.date, value: p.revenue }))
+  );
+  salesVolumePoints = computed(() =>
+    (this.rangeAnalytics()?.salesTimeline ?? []).map(p => ({ date: p.date, value: p.transactionCount }))
+  );
+
+  /** Manager sees money (Revenue Trend), staff sees a plain count (Sales
+   *  Volume) — same underlying salesTimeline, different metric plotted. */
+  secondaryChartPoints = computed(() => this.isManager() ? this.revenueTrendPoints() : this.salesVolumePoints());
+  secondaryChartIsEmpty = computed(() => this.secondaryChartPoints().every(p => p.value === 0));
+  secondaryChartSummaryValue = computed(() => this.isManager()
+    ? (this.rangeAnalytics()?.summary.revenue.currentValue ?? 0)
+    : (this.rangeAnalytics()?.summary.salesCount.currentValue ?? 0)
+  );
+
+  stockTrendChartOptions = computed(() => buildLineChartOptions(this.stockTrendPoints(), this.theme.isDark(), {
+    seriesName: 'Stock Level',
+    valueFormatter: v => `${v.toLocaleString()} units`,
+  }));
+
+  secondaryChartOptions = computed(() => {
+    const isDark = this.theme.isDark();
+    if (this.isManager()) {
+      const code = this.currencyCode();
+      return buildBarChartOptions(this.revenueTrendPoints(), isDark, {
+        seriesName: 'Revenue',
+        valueFormatter: v => `${code} ${v.toLocaleString()}`,
+      });
+    }
+    return buildBarChartOptions(this.salesVolumePoints(), isDark, {
+      seriesName: 'Sales',
+      valueFormatter: v => `${v.toLocaleString()} sales`,
+    });
   });
-
-  stockTrendChartOptions        = computed(() => buildLineChartOptions(this.stockTrendPoints(), this.theme.isDark()));
-  transactionVolumeChartOptions = computed(() => buildBarChartOptions(this.transactionVolumePoints(), this.theme.isDark()));
-
-  netStockChangeTotal  = computed(() => this.stockTrendPoints().reduce((sum, p) => sum + p.value, 0));
-  transactionsTotal    = computed(() => this.transactionVolumePoints().reduce((sum, p) => sum + p.value, 0));
-
-  stockTrendIsEmpty        = computed(() => this.stockTrendPoints().every(p => p.value === 0));
-  transactionVolumeIsEmpty = computed(() => this.transactionVolumePoints().every(p => p.value === 0));
 
   constructor() {
     effect(() => {
       const branchId = this.auth.currentBranchId();
-      if (!branchId) return;
+      if (!branchId || !this.hasDashboardGuard()) return;
       this.loadDashboard(branchId);
     });
 
     effect(() => {
       const branchId = this.auth.currentBranchId();
       const range    = this.selectedRange();
-      if (!branchId) return;
+      if (!branchId || !this.hasDashboardGuard()) return;
       this.loadChartsData(branchId, range);
     });
   }
@@ -139,16 +191,25 @@ export class DashboardComponent implements OnInit {
       catchError(() => of(null)),
     ).subscribe(res => this.summary.set(res));
 
-    const { start, end } = dailyRangeBounds(TOP_ACTIVE_WINDOW_DAYS);
+    const { start: topStart, end: topEnd } = dailyRangeBounds(TOP_ACTIVE_WINDOW_DAYS);
     this.inventorySvc.getTransactionsStats({
       branchId,
-      startDate: start.toISOString(),
-      endDate: end.toISOString(),
+      startDate: toLocalIsoDateTime(topStart),
+      endDate: toLocalIsoDateTime(topEnd),
     }).pipe(
       catchError(() => of(null)),
     ).subscribe(res => {
       this.topActive.set((res?.topActiveVariants ?? []).slice(0, 3));
     });
+
+    const { start: todayStart, end: todayEnd } = dailyRangeBounds(1);
+    this.inventorySvc.getAnalytics({
+      branchId,
+      startDate: toLocalIsoDateTime(todayStart),
+      endDate: toLocalIsoDateTime(todayEnd),
+    }).pipe(
+      catchError(() => of(null)),
+    ).subscribe(res => this.todayAnalytics.set(res));
 
     // No dedicated "low stock" endpoint exists yet, so we pull a page of items
     // and filter/sort client-side for anything not fully "Available".
@@ -162,36 +223,68 @@ export class DashboardComponent implements OnInit {
       this.lowStockItems.set(items);
       this.loading.set(false);
     });
+
+    // Staff Management preview card is manager-only — skip the fetch otherwise.
+    if (this.isManager()) {
+      this.staffSvc.getAssignments(branchId, undefined, undefined, true, 1, RECENT_STAFF_LIMIT).pipe(
+        catchError(() => of(null)),
+      ).subscribe(res => {
+        const assignments = res?.success ? res.data.assignments : [];
+        this.recentStaff.set(assignments);
+        assignments.forEach(a => this.resolveStaffProfile(a));
+      });
+    }
   }
 
-  /** Adapts the current transactions/stats DTO into generic ChartPoints. This
-   *  is the only spot that reads DailyTimelinePoint — the charts themselves
-   *  only ever see ChartPoint[], so a future dedicated chart endpoint only
-   *  requires changing this method. */
+  /** The assignments list carries stale/empty fullName and imageId — the
+   *  Staff Management page never trusts them either, it re-fetches the live
+   *  profile per user. Mirror that here: fullName and the real avatar photo
+   *  both come from getUserProfile(), not from the assignment record. */
+  private resolveStaffProfile(assignment: StaffAssignment): void {
+    this.staffSvc.getUserProfile(assignment.userId).pipe(
+      catchError(() => of(null)),
+    ).subscribe(profile => {
+      if (!profile) return;
+
+      const fullName: string = profile.fullName || assignment.username;
+      this.recentStaff.update(list =>
+        list.map(p => p.id === assignment.id ? { ...p, fullName } : p)
+      );
+
+      if (!profile.imageId) return;
+      this.fileSvc.getFile(profile.imageId).pipe(
+        catchError(() => of(null)),
+      ).subscribe(file => {
+        if (!file?.fileLink) return;
+        this.recentStaff.update(list =>
+          list.map(p => p.id === assignment.id ? { ...p, avatarUrl: file.fileLink } : p)
+        );
+      });
+    });
+  }
+
+  staffInitials(name?: string): string {
+    return getInitials(name);
+  }
+
+  staffAvatarColor(name?: string): string {
+    return avatarColorFor(name);
+  }
+
   private loadChartsData(branchId: string, range: TimeRangeKey): void {
     this.chartsLoading.set(true);
     const { start, end } = dailyRangeBounds(timeRangeDays(range));
 
-    this.inventorySvc.getTransactionsStats({
+    this.inventorySvc.getAnalytics({
       branchId,
-      startDate: start.toISOString(),
-      endDate: end.toISOString(),
+      startDate: toLocalIsoDateTime(start),
+      endDate: toLocalIsoDateTime(end),
     }).pipe(
       catchError(() => of(null)),
     ).subscribe(res => {
-      const timeline = res?.dailyTimeline ?? [];
-      this.rawStockTrend.set(this.toNetChangePoints(timeline));
-      this.rawTransactionVolume.set(this.toTransactionCountPoints(timeline));
+      this.rangeAnalytics.set(res);
       this.chartsLoading.set(false);
     });
-  }
-
-  private toNetChangePoints(timeline: DailyTimelinePoint[]): ChartPoint[] {
-    return timeline.map(p => ({ date: p.date, value: p.addedQuantity - p.reducedQuantity }));
-  }
-
-  private toTransactionCountPoints(timeline: DailyTimelinePoint[]): ChartPoint[] {
-    return timeline.map(p => ({ date: p.date, value: p.count }));
   }
 
   lowStockBadgeClass(status: string): string {

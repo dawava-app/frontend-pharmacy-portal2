@@ -178,6 +178,48 @@ export interface InventoryTransactionsStatsQuery {
   endDate?: string;
 }
 
+/* ---------- /inventory/dashboard/analytics ---------- */
+
+export interface AnalyticsMetric {
+  currentValue: number;
+  comparisonValue: number;
+  changePercentage: number;
+}
+
+export interface DashboardAnalyticsSummary {
+  revenue: AnalyticsMetric;
+  salesCount: AnalyticsMetric;
+  averageTransactionValue: AnalyticsMetric;
+}
+
+export interface StockTimelinePoint {
+  date: string;
+  totalQuantity: number;
+  totalValue: number;
+  uniqueSkus: number;
+}
+
+export interface SalesTimelinePoint {
+  date: string;
+  revenue: number;
+  transactionCount: number;
+  comparisonRevenue: number;
+  comparisonTransactionCount: number;
+}
+
+export interface DashboardAnalytics {
+  summary: DashboardAnalyticsSummary;
+  stockTimeline: StockTimelinePoint[];
+  salesTimeline: SalesTimelinePoint[];
+  currency: string;
+}
+
+export interface DashboardAnalyticsQuery {
+  branchId: string;
+  startDate: string;
+  endDate: string;
+}
+
 /* ---------- /inventory/dashboard/transactions/export ---------- */
 
 export interface InventoryTransactionsExportQuery {
